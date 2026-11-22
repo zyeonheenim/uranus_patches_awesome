@@ -132,7 +132,7 @@
   <div class="brand"><span class="dot"></span>Uranus 补丁合集 · 白皮书</div>
   <nav class="topnav">
     <a href="#overview">总览</a>
-    <a href="#m1">01 日志抽屉</a>
+    <a href="#m1">01 日志抽屉 + 模型快切</a>
     <a href="#m2">02 唤醒自愈</a>
     <a href="#m3">03 入站看门狗</a>
     <a href="#m4">04 群像舞台</a>
@@ -215,7 +215,7 @@
       <line x1="759" y1="172" x2="759" y2="194" stroke="#c9c4bb" stroke-dasharray="3 3"/>
     </g>
   </svg>
-  <div class="fig-cap">五个补丁各守一段链路：② 守睡眠唤醒、③ 守消息接收、④⑤ 守生成与呈现、① 让你随时看得见链路状态。</div>
+  <div class="fig-cap">五个补丁各守一段链路：② 守睡眠唤醒、③ 守消息接收、④⑤ 守生成与呈现、① 让你随时看得见链路状态，还能就地切模型。</div>
   </div></figure>
 </section>
 
@@ -223,13 +223,13 @@
 <section class="module" id="m1">
   <div class="module-head">
     <div class="mnum">01</div>
-    <div><h2>常驻日志抽屉</h2><div class="sub">Real-time Log Drawer · 一眼看清是"在生成"还是"断了"</div></div>
+    <div><h2>常驻日志抽屉 + 模型快切</h2><div class="sub">Log Drawer &amp; Model Switch · 一眼看清是"在生成"还是"断了"，顺手把模型换掉</div></div>
   </div>
-  <div class="tagrow"><span class="tag g">纯前端</span><span class="tag">不改后端</span><span class="tag">Mac / Windows</span><span class="tag">随时可卸</span></div>
+  <div class="tagrow"><span class="tag g">前端 + 1 个接口</span><span class="tag">不改数据结构</span><span class="tag">Mac / Windows</span><span class="tag">随时可卸</span></div>
 
-  <div class="pain"><b>痛点场景：</b>线下模式等 AI 出字，页面一片空白干等——你分不清它是在"慢慢写"，还是 API 早就断了。想知道真相，只能切到「控制台」面板翻日志。等生成一趟回来，人已经走了。</div>
+  <div class="pain"><b>痛点场景：</b>线下模式等 AI 出字，页面一片空白干等——你分不清它是在"慢慢写"，还是 API 早就断了。想知道真相，只能切到「控制台」面板翻日志。等生成一趟回来，人已经走了。<br><br>还有一种：<b>盯着日志发现某条线在拖后腿，想立刻换个模型</b>——可换模型得跳去角色页、翻到对应角色、找到那一档、保存。等切完，戏都断了。</div>
 
-  <p class="lead-q">装了之后：<b>左下角永远钉着一颗小胶囊</b>，实时显示链路是"连接中"还是"已断开"。点开就是完整日志面板，断网、限流、超时立刻冒红字——<b>不用切页面</b>。</p>
+  <p class="lead-q">装了之后：<b>角落永远钉着一颗小胶囊</b>，实时显示链路是"连接中"还是"已断开"。点开就是完整日志面板，断网、限流、超时立刻冒红字——<b>不用切页面</b>。右上角还多一个 <code>模型</code> 按钮：选角色 → 选模型 → 切换，<b>三个点击当场生效</b>，聊天 / 线下 / 兜底都能切。</p>
 
   <h3 class="mini">前端呈现</h3>
   <figure><div class="fig">
@@ -248,12 +248,12 @@
       <text x="164" y="177" font-size="12.5" fill="#3c5a47">（你）刚才那句发出去了</text>
       <text x="150" y="230" font-size="13" fill="#b45309">● ○ ○　正在生成…</text>
       <text x="150" y="256" font-size="12" fill="#8b867d">（已经转了 40 秒，没有任何反馈）</text>
-      <text x="48" y="330" font-size="12.5" fill="#8b867d">左下角：空的</text>
+      <text x="48" y="330" font-size="12.5" fill="#8b867d">角落：空的</text>
       <path d="M40 322 L40 344" stroke="#c0392b" stroke-width="2" stroke-dasharray="4 3"/>
       <circle cx="40" cy="348" r="4" fill="#c0392b"/>
 
       <!-- 右：装后 -->
-      <text x="460" y="30" class="lbl-b" font-size="14">装之后 · 左下角常驻胶囊</text>
+      <text x="460" y="30" class="lbl-b" font-size="14">装之后 · 角落常驻胶囊</text>
       <rect x="460" y="42" width="396" height="330" rx="12" fill="#fff" stroke="#e3dfd7"/>
       <rect x="460" y="42" width="396" height="34" rx="12" fill="#f4f2ed"/>
       <text x="476" y="64" font-size="12" fill="#8b867d">线下剧情 · 第 12 轮</text>
@@ -290,7 +290,7 @@
       </g>
     </g>
   </svg>
-  <div class="fig-cap">左：装前左下角空空、只能干等。右：装后左下角胶囊常驻；点开是与「控制台」同一份实时日志，带级别筛选、搜索、暂停、清空，顶部绿色状态行一眼可见链路健康。</div>
+  <div class="fig-cap">左：装前角落空空、只能干等。右：装后角落胶囊常驻；点开是与「控制台」同一份实时日志，带级别筛选、搜索、暂停、清空，顶部绿色状态行一眼可见链路健康。</div>
   </div></figure>
 
   <figure><div class="fig">
@@ -309,20 +309,88 @@
   </svg>
   </div></figure>
 
+  <p class="lead-q">抽屉右上角还有一个 <code>模型</code> 按钮 —— <b>盯着日志发现哪条线不对，就地换掉</b>：</p>
+
+  <figure><div class="fig">
+  <svg viewBox="0 0 880 340" role="img" aria-label="日志抽屉里的模型快切面板">
+    <rect width="880" height="340" fill="#fdfcf9"/>
+    <g font-family="inherit">
+      <!-- 抽屉面板 -->
+      <rect x="24" y="24" width="520" height="292" rx="12" fill="#fff" stroke="#d8d3c9" stroke-width="1.5"/>
+      <rect x="24" y="24" width="520" height="36" rx="12" fill="#f4f2ed"/>
+      <text x="40" y="47" font-size="12.5" font-weight="700" fill="#2b2a28">运行日志</text>
+      <circle cx="112" cy="43" r="3.5" fill="#2f855a"/>
+      <text x="122" y="47" font-size="10.5" fill="#2f855a">实时连接中</text>
+      <!-- 模型按钮（激活态） -->
+      <rect x="432" y="32" width="62" height="22" rx="5" fill="#e7f4ec" stroke="#2f855a"/>
+      <text x="442" y="47" font-size="11" font-weight="700" fill="#2f855a">◈ 模型</text>
+      <text x="508" y="47" font-size="12" fill="#8b867d">✕</text>
+
+      <!-- 第一行：谁 → 换成什么 → 切 -->
+      <rect x="40" y="72" width="100" height="26" rx="6" fill="#fff" stroke="#d8d3c9"/>
+      <text x="50" y="89" font-size="11" fill="#5d5952">全部角色 ▾</text>
+      <rect x="148" y="72" width="272" height="26" rx="6" fill="#fff" stroke="#d8d3c9"/>
+      <text x="158" y="89" font-size="11" fill="#5d5952">测试服务商 · 模型乙 ▾</text>
+      <rect x="428" y="72" width="72" height="26" rx="13" fill="#2b2a28"/>
+      <text x="443" y="89" font-size="11" font-weight="700" fill="#fff">✓ 切换</text>
+
+      <!-- 第二行：档位 + 当前值 -->
+      <rect x="40" y="108" width="44" height="20" rx="5" fill="#e7f4ec"/>
+      <text x="50" y="122" font-size="10.5" font-weight="700" fill="#2f855a">聊天</text>
+      <rect x="88" y="108" width="44" height="20" rx="5" fill="#f4f2ed"/>
+      <text x="98" y="122" font-size="10.5" fill="#8b867d">线下</text>
+      <rect x="136" y="108" width="44" height="20" rx="5" fill="#f4f2ed"/>
+      <text x="146" y="122" font-size="10.5" fill="#8b867d">兜底</text>
+      <text x="196" y="122" font-size="10.5" fill="#8b867d">聊天　测试服务商 · 模型乙</text>
+
+      <line x1="24" y1="140" x2="544" y2="140" stroke="#e3dfd7"/>
+
+      <!-- 日志区（下面是原样日志，说明不影响看日志）-->
+      <g font-family="var(--mono)" font-size="10.5">
+        <text x="40" y="164" fill="#8b867d">18:31:02</text><text x="104" y="164" fill="#2f855a">INFO</text><text x="140" y="164" fill="#5d5952">收到一轮 · 312 字</text>
+        <text x="40" y="186" fill="#8b867d">18:31:05</text><text x="104" y="186" fill="#b45309">WARN</text><text x="140" y="186" fill="#5d5952">上游限流，退避重试</text>
+        <text x="40" y="208" fill="#8b867d">18:31:09</text><text x="104" y="208" fill="#2f855a">INFO</text><text x="140" y="208" fill="#5d5952">重试成功 · 已落库</text>
+      </g>
+      <text x="40" y="240" font-size="11" font-weight="700" fill="#2f855a">✓ 模型已切到 测试服务商 · 模型乙</text>
+      <text x="40" y="264" font-size="10.5" fill="#8b867d">提示行同时是「当前值」显示：切完立刻变，操作有反馈。</text>
+      <text x="40" y="286" font-size="10.5" fill="#8b867d">模型快切只占两行，不挤占下面的日志区。</text>
+
+      <!-- 右侧注解 -->
+      <text x="576" y="52" font-size="13" font-weight="700" fill="#2b2a28">三档各管什么</text>
+      <text x="576" y="82" font-size="12" fill="#5d5952"><tspan font-weight="700">聊天</tspan>　线上消息使用的模型</text>
+      <text x="576" y="108" font-size="12" fill="#5d5952"><tspan font-weight="700">线下</tspan>　线下剧情正文使用的模型</text>
+      <text x="576" y="134" font-size="12" fill="#5d5952"><tspan font-weight="700">兜底</tspan>　主模型报错时顶上</text>
+      <text x="610" y="152" font-size="11" fill="#8b867d">（线上和线下共用同一份）</text>
+
+      <line x1="576" y1="172" x2="856" y2="172" stroke="#e3dfd7"/>
+
+      <text x="576" y="196" font-size="12" fill="#5d5952">没单独配 → 标「<tspan fill="#b45309">跟着聊天</tspan>」</text>
+      <text x="576" y="220" font-size="12" fill="#5d5952">兜底没开 → 标「<tspan fill="#b45309">未启用</tspan>」</text>
+      <text x="576" y="244" font-size="12" fill="#5d5952">模型被关掉 → 标「<tspan fill="#b45309">已关闭</tspan>」</text>
+      <text x="576" y="284" font-size="12" fill="#5d5952">切完不 reload、不整包保存，</text>
+      <text x="576" y="304" font-size="12" fill="#5d5952">不会盖掉你在别处没存的东西</text>
+    </g>
+  </svg>
+  <div class="fig-cap">抽屉展开后右上角点「模型」：① 选「全部角色」或某一个；② 选你要换成的模型（列表只含你「连接」里已启用的）；③ 选档位「聊天 / 线下 / 兜底」，点切换当场生效。下面日志照常滚动，不会被这块挤掉。</div>
+  </div></figure>
+
   <h3 class="mini">怎么用</h3>
   <ol class="steps">
-    <li>双击模块文件夹里的 <code>安装.command</code>，跑完后在 Uranus 根目录 <code>npm run build</code> 重新打包前端。</li>
-    <li>重启 Uranus，浏览器 <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> 硬刷新，左下角出现胶囊即成功。</li>
-    <li>点胶囊展开；点 📌 钉住后每次进控制台都自动展开。收起时只在左下角留一颗胶囊，<b>特意避开右下角客服气泡</b>。</li>
-    <li>想看完整日志（复制、账号、服务控制）仍在「控制台」面板——抽屉是它的"随身缩略版"。</li>
+    <li>双击模块文件夹里的 <code>安装.command</code>：自动备份 → 复制组件 → 插 3 处锚点（前端 2 + 后端 1）→ <code>npm run build</code> → 重启 Uranus；任一步失败会自动回滚。</li>
+    <li>浏览器 <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> 硬刷新，角落出现「运行日志」胶囊即成功。</li>
+    <li>点胶囊展开：上面是链路状态，下面是实时日志（级别筛选 / 搜索 / 暂停 / 清空）。断网、限流、超时立刻变红。</li>
+    <li>点右上角 <code>模型</code>：选角色（或「全部角色」）→ 选模型 → 选档位（聊天 / 线下 / 兜底）→ 点「切换」。右侧小字会变成「模型已切到 …」。</li>
+    <li>想撤销：双击同目录的 <code>卸载还原.command</code>，它会把 <code>shell.jsx</code> 和 <code>index.js</code> 还原成装之前的样子（实测字节一致）并重新构建。</li>
   </ol>
 
   <details><summary>原理与兼容性（点开）</summary><div class="details-body">
     <dl class="kv">
-      <dt>怎么做到"零后端"</dt><dd>复用 Uranus 自带的 <code>/api/logs/stream</code>（SSE 日志流）——控制台面板本来就在用它。组件用 <code>useLogs()</code> 拿日志和连接状态，用控制台导出的 <code>LogRow</code> 渲染每一行，筛选/搜索/暂停全是组件内部的 <code>useState</code>。</dd>
-      <dt>改了哪些文件</dt><dd>只新增 <code>client/src/logdrawer.jsx</code>，并在 <code>client/src/shell.jsx</code> 的两处官方锚点后各插 1 行（共 2 行）。</dd>
-      <dt>为什么用"锚点插入"</dt><dd><code>shell.jsx</code> 常被其他本地补丁改过，整文件替换会失败；锚点插入只认原版一定存在的两行，跟其他补丁互不打扰。</dd>
-      <dt>兼容性</dt><dd>只用上游已有的图标库、主题变量和日志 API，无新增依赖。Mac / Windows 源码完全相同，只是构建和重启命令不同。已在原版 1.22.x 上逐条验证锚点存在。</dd>
+      <dt>日志为什么零后端</dt><dd>复用 Uranus 自带的 <code>/api/logs/stream</code>（SSE 日志流）——控制台面板本来就在用它。组件用 <code>useLogs()</code> 拿日志和连接状态，用控制台导出的 <code>LogRow</code> 渲染每一行，筛选/搜索/暂停全是组件内部的 <code>useState</code>。</dd>
+      <dt>模型快切为什么要加一个接口</dt><dd>原版保存配置走 <code>PUT /api/config</code>，要求前端先把<b>整份配置</b>发回去。抽屉是常驻的，手里那份可能已经是几小时前的——整包写回会盖掉你在别的面板里没保存的改动。所以新增 <code>POST /api/role-model</code>：后端自己 <code>loadConfig()</code> → 只改目标角色的 <code>chatModel / offline.model / fallbackModel</code> → <code>saveConfig()</code>，并且<b>不刷桥接</b>（模型引用是每轮现读的，刷桥接会把正在回话的连接掐掉）。</dd>
+      <dt>改了哪些文件</dt><dd>新增 <code>client/src/logdrawer.jsx</code>；<code>client/src/shell.jsx</code> 两处锚点后各插 1 行；<code>server/src/index.js</code> 在 <code>app.get("/api/config/path")</code> 前插入 1 个接口。<b>没有改任何数据结构</b>，改的都是角色卡原有字段。</dd>
+      <dt>为什么用"锚点插入"</dt><dd><code>shell.jsx</code> / <code>index.js</code> 常被其他本地补丁改过，整文件替换会失败；锚点插入只认原版一定存在的几行，跟其他补丁互不打扰，重复运行也不会重复插入。</dd>
+      <dt>实测记录</dt><dd>在干净的原版 1.22.3 副本上装→卸往返验证：安装后 <code>shell.jsx</code> 含 <code>LiveLogDrawer</code>、<code>index.js</code> 含 <code>/api/role-model</code>；卸载后两个文件与基线<b>逐字节一致</b>。接口实测：批量改两个角色的「聊天+兜底」、单独改一个角色的「线下」均成功落盘；给一个被关闭的模型会返回 400「这个模型是关着的」，服务商不存在返回 404。</dd>
+      <dt>兼容性</dt><dd>只用上游已有的图标库、主题变量、日志 API 和 <code>labels.js</code> 导出的辅助函数，无新增依赖。Mac / Windows 源码完全相同，只是构建和重启命令不同。已在原版 1.22.x 上逐条验证锚点存在。</dd>
     </dl>
   </div></details>
 </section>
@@ -460,7 +528,7 @@
       <!-- 与模块1联动 -->
       <rect x="24" y="270" width="832" height="52" rx="10" fill="#faf9f6" stroke="#e3dfd7"/>
       <circle cx="46" cy="296" r="4" fill="#5b5bd6"/>
-      <text x="60" y="293" font-size="12.5" fill="#5d5952">想实时看它的状态？装上模块 ① 日志抽屉，在左下角找 <tspan font-family="var(--mono)" fill="#5b5bd6">[看门狗]</tspan> 开头的行。</text>
+      <text x="60" y="293" font-size="12.5" fill="#5d5952">想实时看它的状态？装上模块 ① 日志抽屉，在角落抽屉里找 <tspan font-family="var(--mono)" fill="#5b5bd6">[看门狗]</tspan> 开头的行。</text>
       <text x="60" y="311" font-size="11.5" fill="#8b867d">这也说明两个模块可以共存、互相配合。</text>
     </g>
   </svg>
