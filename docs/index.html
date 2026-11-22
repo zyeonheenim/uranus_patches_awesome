@@ -262,7 +262,7 @@
       <tr><td><td><b>02 唤醒自愈</b></td><td class="no">否（独立任务）</td><td class="yes">✓</td><td class="no">—</td><td>无（后台静默）</td></tr>
     </tbody>
   </table>
-  <p style="color:var(--ink-3);font-size:13px;margin:6px 0 0">上表顺序＝<a href="#overview">总览里的推荐顺序</a>，也＝下文各章的顺序。全部模块都在原版 1.22.3 上实测可装。</p>
+  <p style="color:var(--ink-3);font-size:13px;margin:6px 0 0">上表顺序＝<a href="#overview">总览里的推荐顺序</a>，也＝下文各章的顺序。全部模块都在原版 <b>1.22.3 和 1.22.9</b> 上实测可装（装→卸往返、逐字节还原）。</p>
 
   <ol class="steps" style="margin-top:18px">
     <li>每个模块一个文件夹，<b>双击里面的安装脚本</b>：macOS 是 <code>安装.command</code>，Windows 是 <code>安装.bat</code>。装在非默认位置就设 <code>URANUS_ROOT</code> 环境变量。</li>
@@ -546,7 +546,7 @@
       <dt>模型快切为什么要加一个接口</dt><dd>原版保存配置走 <code>PUT /api/config</code>，要求前端先把<b>整份配置</b>发回去。抽屉是常驻的，手里那份可能已经是几小时前的——整包写回会盖掉你在别的面板里没保存的改动。所以新增 <code>POST /api/role-model</code>：后端自己 <code>loadConfig()</code> → 只改目标角色的 <code>chatModel / offline.model / fallbackModel</code> → <code>saveConfig()</code>，并且<b>不刷桥接</b>（模型引用是每轮现读的，刷桥接会把正在回话的连接掐掉）。</dd>
       <dt>改了哪些文件</dt><dd>新增 <code>client/src/logdrawer.jsx</code>；<code>client/src/shell.jsx</code> 两处锚点后各插 1 行；<code>server/src/index.js</code> 在 <code>app.get("/api/config/path")</code> 前插入 1 个接口。<b>没有改任何数据结构</b>，改的都是角色卡原有字段。</dd>
       <dt>为什么用"锚点插入"</dt><dd><code>shell.jsx</code> / <code>index.js</code> 常被其他本地补丁改过，整文件替换会失败；锚点插入只认原版一定存在的几行，跟其他补丁互不打扰，重复运行也不会重复插入。</dd>
-      <dt>实测记录</dt><dd>在干净的原版 1.22.3 副本上装→卸往返验证：安装后 <code>shell.jsx</code> 含 <code>LiveLogDrawer</code>、<code>index.js</code> 含 <code>/api/role-model</code>；卸载后两个文件与基线<b>逐字节一致</b>。接口实测：批量改两个角色的「聊天+兜底」、单独改一个角色的「线下」均成功落盘；给一个被关闭的模型会返回 400「这个模型是关着的」，服务商不存在返回 404。</dd>
+      <dt>实测记录</dt><dd>在干净的原版 1.22.3 / 1.22.9 副本上装→卸往返验证：安装后 <code>shell.jsx</code> 含 <code>LiveLogDrawer</code>、<code>index.js</code> 含 <code>/api/role-model</code>；卸载后两个文件与基线<b>逐字节一致</b>。接口实测：批量改两个角色的「聊天+兜底」、单独改一个角色的「线下」均成功落盘；给一个被关闭的模型会返回 400「这个模型是关着的」，服务商不存在返回 404。</dd>
       <dt>兼容性</dt><dd>只用上游已有的图标库、主题变量、日志 API 和 <code>labels.js</code> 导出的辅助函数，无新增依赖。Mac / Windows 走的是同一份补丁逻辑（<code>install.mjs</code> + <code>apply.js</code>），差别只在「怎么构建、怎么重启」：macOS 用 <code>launchctl</code>，Windows 用 <code>taskkill</code> + 重开启动器。已在原版 1.22.x 上逐条验证锚点存在。</dd>
     </dl>
   </div></details>
@@ -698,7 +698,7 @@
     <dl class="kv">
       <dt>四个功能</dt><dd><b>02 版本留底</b>：重 roll / 手改 / 删除的旧稿进 alts 存档，气泡「历史 N」可翻可恢复，恢复当前稿也先留底；旧稿不进上下文。<b>03 气泡样式</b>：两侧配色分开调，存服务端（跨设备同步），白名单字段 + 越界夹取。<b>04 模型 token</b>：识别 OpenAI / Gemini 原生 / Claude 三种用量格式，标题显示模型与 ↑输入(缓存)↓输出。<b>05 四钮跳转</b>：右缘四钮 + WebKit 回顶修复。</dd>
       <dt>安全设计</dt><dd>装前备份到 <code>.patches-backup-&lt;时间戳&gt;/</code>；任一补丁对不上（版本差太多/文件被大改）就整份不写，不会改坏半个文件；装完自动跑 17–20 项自检，不联网、不碰真实数据。</dd>
-      <dt>版本与共存</dt><dd>按原版 <b>1.22.3</b> 源码做，1.22.2 / 1.22.7 实测也能打上。四功能改同一页 <code>offline.jsx</code> 不同段落，按 02→03→04→05 顺序叠加，安装器自动处理。和模块 ④ 群像舞台也改这个文件但锚点不同，已实测可同时装。</dd>
+      <dt>版本与共存</dt><dd>按原版 <b>1.22.3</b> 源码做，1.22.2 / 1.22.7 / 1.22.9 实测也能装。<b>1.22.9 起「版本留底」会自动跳过</b>——上游已把同一件事做进本体（<code>turn.alts</code>），两套一起装会在气泡上挂两份「历史」。其余三件照常可装。四功能改同一页 <code>offline.jsx</code> 不同段落，按 02→03→04→05 顺序叠加，安装器自动处理。和模块 ④ 群像舞台也改这个文件但锚点不同，已实测可同时装。</dd>
     </dl>
   </div></details>
 </section>
@@ -996,7 +996,7 @@
   </table>
 
   <div class="callout blue" style="margin-top:18px">
-    <b>边界坦诚说：</b>补丁锚点按原版 <b>1.22.2 / 1.22.3 / 1.22.7</b> 验证过。若你的 Uranus 版本差太多、或源码被大改，安装脚本会报错并自动回滚，不会改坏文件——但那种情况下可能需要手动适配。
+    <b>边界坦诚说：</b>补丁锚点按原版 <b>1.22.2 / 1.22.3 / 1.22.7 / 1.22.9</b> 验证过。若你的 Uranus 版本差太多、或源码被大改，安装脚本会报错并自动回滚，不会改坏文件——但那种情况下可能需要手动适配。
   </div>
 </section>
 

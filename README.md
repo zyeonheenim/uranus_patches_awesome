@@ -14,7 +14,7 @@
 > ③ 入站断流每 60 秒巡检自愈（macOS）；④ 群像舞台——线下剧情勾选出场角色、读各自人设、收工自动写记忆；
 > ⑤ 线下剧情增强——版本留底 / 气泡样式 / 模型token / 右缘四钮快速跳转。
 >
-> **Windows 支持**：01 / 04 / 05 双击模块里的 `安装.bat` 即可（同一份 Node 逻辑）；02 / 03 依赖 macOS 的 launchd 与 `uranus.log`，只有 macOS 版——原因和 Windows 常见问题见[白皮书的 Windows 一节](https://zyeonheenim.github.io/uranus_patches_awesome/#windows)。
+> **Windows 支持**：01 / 04 / 05 双击模块里的 `安装.bat` 即可（同一份 Node 逻辑）；02 / 03 依赖 macOS 的 launchd 与 `uranus.log`，只有 macOS 版——原因和 Windows 常见问题见[白皮书的 Windows 一节](https://zyeonheenim.github.io/uranus_patches_awesome/#windows)。**上游 1.22.9 适配**：合集已在 1.22.9 实测（01/03/04/05 可装，02「版本留底」因上游已原生内置而自动跳过）。
 >
 > 这一套已彻底脱敏：**不含任何角色名、人设、密钥、账号或个人信息**，模型与 API key
 > 全部在安装后从玩家自己的 Uranus 配置里读取。详见合集中的 `README.md` 与各模块说明。
