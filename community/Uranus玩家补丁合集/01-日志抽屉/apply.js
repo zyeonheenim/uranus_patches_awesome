@@ -7,6 +7,11 @@
  *   2. 在 <Uranus>/client/src/shell.jsx 的两处「官方原版锚点」后插入日志抽屉：
  *        - import { LiveLogDrawer } from "./logdrawer.jsx";   （在 store 导入后）
  *        - <LiveLogDrawer />                                  （在 <AssistantBubble /> 后）
+ *   3. 在 <Uranus>/server/src/index.js 插入「模型快切」接口 POST /api/role-model
+ *      （files/role-model-route.js）。抽屉头部的「模型」按钮靠它切模型；
+ *      没有这一步，按钮能点但没有效果。
+ *
+ * 三步都幂等：重复运行不会重复插入；找不到锚点会明确报错而不是写坏文件。
  *
  * 为什么用这个而不是整文件 diff：
  *   shell.jsx 在不少人的仓库里已经被各种本地补丁改过。整文件 diff 会因为缺失的
@@ -113,9 +118,50 @@ if (changed) {
   console.log("ℹ️  shell.jsx 无需改动（补丁已存在）");
 }
 
+// ---- 3. 服务端：模型快切接口 ----
+const serverFile = path.join(root, "server", "src", "index.js");
+const routeFile = path.join(scriptDir, "files", "role-model-route.js");
+const routeAnchor = 'app.get("/api/config/path"';
+let serverOk = false;
+
+if (!fs.existsSync(serverFile)) {
+  console.log("⚠️  找不到 server/src/index.js —— 跳过模型快切接口（抽屉能看日志，但「模型」按钮不起作用）");
+} else if (!fs.existsSync(routeFile)) {
+  console.log("⚠️  找不到 files/role-model-route.js（补丁包不完整）—— 跳过模型快切接口");
+} else {
+  let idx = fs.readFileSync(serverFile, "utf8");
+  if (idx.includes('"/api/role-model"')) {
+    console.log("ℹ️  模型快切接口已存在，跳过");
+    serverOk = true;
+  } else {
+    const at = idx.indexOf(routeAnchor);
+    if (at < 0) {
+      console.log("⚠️  在 index.js 找不到接口插入锚点：" + routeAnchor);
+      console.log("   你的 index.js 可能已被大幅改动。请在 app.get(\"/api/config/path\") 之前");
+      console.log("   手动粘贴 files/role-model-route.js 的内容（不影响日志抽屉本身使用）。");
+    } else {
+      const route = fs.readFileSync(routeFile, "utf8").trim();
+      fs.writeFileSync(
+        serverFile + ".bak-logdrawer",
+        idx,
+        "utf8"
+      );
+      idx = idx.slice(0, at) + route + "\n\n" + idx.slice(at);
+      fs.writeFileSync(serverFile, idx);
+      console.log("✅ 已修改 server/src/index.js（插入 POST /api/role-model）");
+      console.log("   原文件备份：server/src/index.js.bak-logdrawer");
+      serverOk = true;
+    }
+  }
+}
+
 console.log("");
 console.log("🎉 源代码改动完成。下一步：");
 console.log("   1) 构建前端： 在 Uranus 根目录执行  npm run build");
 console.log("   2) 重启 Uranus 服务 / 应用（见 README 的 Mac / Windows 章节）");
 console.log("   3) 浏览器硬刷新（Mac: Cmd+Shift+R ／ Windows: Ctrl+Shift+R）");
-console.log("   左下角会出现「实时日志」胶囊按钮。");
+console.log("角落会出现「运行日志」胶囊；展开后右上角有「模型」按钮，可给一个或全部角色切聊天/线下/兜底模型。");
+if (!serverOk) {
+  console.log("");
+  console.log("⚠️  注意：模型快切接口未装上，右下角「模型」按钮点了不会生效。");
+}
