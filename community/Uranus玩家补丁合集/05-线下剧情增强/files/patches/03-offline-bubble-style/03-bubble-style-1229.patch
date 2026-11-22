@@ -1,6 +1,6 @@
 --- a/client/src/panels/offline.jsx
 +++ b/client/src/panels/offline.jsx
-@@ -50,6 +50,7 @@
+@@ -47,6 +47,7 @@
    History,
    Loader2,
    MoreHorizontal,
@@ -8,7 +8,7 @@
    Pencil,
    Play,
    Plus,
-@@ -72,8 +73,87 @@
+@@ -69,8 +70,87 @@
  
  /** 一轮正文的上限，和 server/src/offlinestore.js:MAX_TURN_CHARS 对齐。 */
  const MAX_TURN_CHARS = 20000;
@@ -96,7 +96,7 @@
   * 一进来先画多少轮，以及每次往上看再补多少轮。
   *
   * 剧情是从上往下读的，真正在看的永远是末尾那几轮。但一条 HTML 回复就是一个
-@@ -823,6 +903,7 @@
+@@ -820,6 +900,7 @@
    altsOpen,
    onAlts,
    onRestore,
@@ -104,7 +104,7 @@
  }) {
    /*
     * 角色那侧先把没人接手的自造标记收掉（见 `offlinehtml.js:dropStray`）——
-@@ -846,6 +927,9 @@
+@@ -843,6 +924,9 @@
    const blocks = useMemo(() => (isHtml ? splitRich(text) : null), [isHtml, text]);
    // ㉑ 这条轮的历史版本（重 roll 旧稿挂在 user 轮、手改旧稿挂在被改的那条自己身上）
    const versions = turn.alts ?? [];
@@ -114,7 +114,7 @@
    const textStyle = boxStyle ? { color: boxStyle.color } : undefined;
  
    return (
-@@ -907,6 +991,7 @@
+@@ -904,6 +988,7 @@
            </div>
          ) : (
            <div
@@ -122,7 +122,7 @@
              className={`mt-1.5 border px-3.5 py-3 ${
                /*
                 * 不带 widget 的那条按字数量宽（`w-fit`）。以前这儿是撑满整行的，
-@@ -929,6 +1014,7 @@
+@@ -926,6 +1011,7 @@
                    b.kind === "text" ? (
                      <p
                        key={i}
@@ -130,7 +130,7 @@
                        className="whitespace-pre-wrap break-words text-ui leading-relaxed text-ink-soft"
                      >
                        {spoken ? (
-@@ -957,7 +1043,7 @@
+@@ -954,7 +1040,7 @@
                  )}
                </div>
              ) : spoken ? (
@@ -139,7 +139,7 @@
                  <VoiceText
                    roleKey={roleKey}
                    turnId={turn.id}
-@@ -967,7 +1053,7 @@
+@@ -964,7 +1050,7 @@
                  />
                </p>
              ) : (
@@ -148,7 +148,7 @@
                  {text}
                </p>
              )}
-@@ -1209,7 +1295,197 @@
+@@ -1206,7 +1292,197 @@
   * 这一步是用户点名的那件事：补一次大总结 → 把这条剧情的小/大总结注进记忆库的
   * 待总结 → 回归线上。所以要在按下去之前把这三件事说清楚，尤其是
   * 「注进去的只有总结，原始的每一轮不进去」。
@@ -346,7 +346,7 @@
  function CloseDialog({ roleName, busy, inject, onInject, onClose, onConfirm }) {
    return (
      <Modal
-@@ -1509,6 +1785,56 @@
+@@ -1506,6 +1782,56 @@
    const [manual, setManual] = useState("");
    const [showSummary, setShowSummary] = useState(false);
    const [showPrompt, setShowPrompt] = useState(false);
@@ -403,7 +403,7 @@
    // 往上补了多少轮（只算「更早的那批」，不含 SHOW_TURNS 那份基数）
    const [loadedMore, setLoadedMore] = useState(0);
    // 折起来那几轮（已经换成总结的）现在展开着没有
-@@ -2449,6 +2775,9 @@
+@@ -2374,6 +2700,9 @@
                      <Button variant="ghost" onClick={() => setShowPrompt(true)}>
                        <FileText size={14} /> 提示词
                      </Button>
@@ -413,7 +413,7 @@
                    </div>
                  </div>
  
-@@ -2622,6 +2951,7 @@
+@@ -2546,6 +2875,7 @@
                          altsOpen={altsKey === t.id}
                          onAlts={setAltsKey}
                          onRestore={restoreTurn}
@@ -421,7 +421,7 @@
                          roleKey={itemId}
                          auto={turnAuto && lastAssistant?.id === t.id}
                          onVoiceError={voiceError}
-@@ -2732,8 +3062,18 @@
+@@ -2614,8 +2944,18 @@
                            <span className="text-eyebrow uppercase text-ink-faint">{userName}</span>
                            <span className="text-meta text-ink-meta">发出去了</span>
                          </div>
@@ -442,7 +442,7 @@
                              {pending}
                            </p>
                          </div>
-@@ -2780,8 +3120,18 @@
+@@ -2662,8 +3002,18 @@
                              </span>
                            )}
                          </div>
@@ -463,7 +463,7 @@
                              {streaming}
                              <span className="ml-0.5 animate-pulse text-ink-faint">▍</span>
                            </p>
-@@ -2870,6 +3220,13 @@
+@@ -2752,6 +3102,13 @@
        )}
  
        {showPrompt && <PromptDialog onClose={() => setShowPrompt(false)} />}
@@ -595,7 +595,7 @@
  import {
    assistantGreeting,
    buildAssistantMessages,
-@@ -1462,6 +1463,8 @@
+@@ -1375,6 +1376,8 @@
  mountReminders(app, loadConfig);
  // 控制台 / 查手机的自定义 CSS（data/custom-css.json，不走 /api/config）
  mountCustomCss(app);

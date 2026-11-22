@@ -28,25 +28,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const EXPECT_VERSION = "1.22.3"; // 补丁实测基线；1.22.x 其它小改版也接受（见下方版本闸）
 const RECORD = ".patches-backup-"; // 备份目录前缀
 
-/**
- * 上游 1.22.9 起服务端已原生内置单轮留底（turn.alts / removed[]），和第 02 号补丁
- * 是同一件事（连 user 轮旧稿迁移都做了一样的翻修）。检测到就别再装 02 ——
- * 两套留底会在界面上打架（一个气泡挂两份「历史」）。
- */
-function nativeVersionHistory(dir) {
-  const f = path.join(dir, "server", "src", "offlinestore.js");
-  if (!fileExists(f)) return false;
-  try {
-    const s = fs.readFileSync(f, "utf8");
-    return s.includes("raw?.alts") || s.includes("单轮留底");
-  } catch {
-    return false;
-  }
-}
-let NATIVE_ALTS = false; // findTarget 之后赋值
 let TARGET_VER = ""; // findTarget 之后赋值
 
-/** 语义化版本比较：a >= b 返回 true（只比数字段）。 */
+/** 语义化版本比较：a >= b（只比数字段）。 */
 function verAtLeast(a, b) {
   const pa = String(a).split(".").map((n) => parseInt(n, 10) || 0);
   const pb = String(b).split(".").map((n) => parseInt(n, 10) || 0);
@@ -57,7 +41,7 @@ function verAtLeast(a, b) {
   return true;
 }
 
-/** 按目标版本选补丁文件：1.22.9 起有重写过的上下文，就用 -1229 变体。 */
+/** 按目标版本选补丁文件：有 -1229 变体且版本 ≥ 1.22.9 就用它。 */
 function patchFileFor(m) {
   if (m.patch1229 && TARGET_VER && verAtLeast(TARGET_VER, "1.22.9")) return m.patch1229;
   return m.patch;
@@ -95,8 +79,8 @@ const CATALOG = [
     kind: "patch",
     needs: ["02"],
     summary: "两侧气泡底色/边框/文字色/圆角，存服务端，手机电脑同一份",
-    patch: "03-bubble-style.patch", // 1.22.3 ~ 1.22.8 用
-    patch1229: "03-bubble-style-1229.patch", // 1.22.9 起：上游把「正在写」气泡重写了（带秒表），上下文不同
+    patch: "03-bubble-style.patch", // 1.22.3 ~ 1.22.8
+    patch1229: "03-bubble-style-1229.patch", // 1.22.9 起：上游在「正在写」气泡里加了秒表，hunk 边缘的上下文不同
     markers: [["server/src/bubblestyle.js", "sanitizeBubbleStyle"]],
   },
   {
@@ -269,15 +253,13 @@ function applyPatch(root, text, dryRun) {
 
       const guess = Math.max(0, h.oldStart - 1 - (h.oldCount ? 0 : 1));
       let at = -1;
+      // 严格匹配：先按行号猜，再全文顺序找。不做 fuzz ——
+      // 上游改过 hunk 边缘的代码时（例如 1.22.9 的秒表块），
+      // 强行模糊匹配会把别人的新代码切碎；那种情况我们单独出这个版本的补丁。
       if (matchesAt(src, want, guess) && guess >= cursor) at = guess;
       if (at < 0) {
-        const hits = [];
         for (let i = cursor; i + want.length <= src.length; i += 1) {
-          if (matchesAt(src, want, i)) hits.push(i);
-        }
-        if (hits.length) {
-          hits.sort((a, b) => Math.abs(a - guess) - Math.abs(b - guess));
-          at = hits[0];
+          if (matchesAt(src, want, i)) { at = i; break; }
         }
       }
       if (at < 0) {
@@ -384,7 +366,6 @@ function select() {
     if (!CATALOG.some((m) => m.id === id)) die(`没有第 ${id} 号补丁（可用：${CATALOG.map((m) => m.id).join(" / ")}）`);
   }
   // 依赖闭包：03 要 02，04 要 02+03。缺的自动补上并说一声。
-  // 上游已原生内置留底时，02 这个前置视为已满足，不用补。
   const set = new Set(ids);
   const added = [];
   let changed = true;
@@ -393,7 +374,6 @@ function select() {
     for (const id of [...set]) {
       const mod = CATALOG.find((m) => m.id === id);
       for (const need of mod.needs) {
-        if (need === "02" && NATIVE_ALTS) continue; // 上游已内置，前置自动满足
         if (!set.has(need)) {
           set.add(need);
           added.push(need);
@@ -420,12 +400,9 @@ if (LIST || !target) {
   }
   say(target ? `Uranus：${c.bold(target.dir)}  ${c.dim(`v${target.version}`)}` : c.dim("（没找到 Uranus 目录，只列清单）"));
   say("");
-  const nativeAlts = target ? nativeVersionHistory(target.dir) : false;
   for (const m of CATALOG) {
     const inst = target ? isInstalled(target.dir, m) : false;
-    const badge = inst ? c.green("已装")
-      : m.id === "02" && nativeAlts ? c.cyan("上游已内置，无需装")
-      : c.dim("未装");
+    const badge = inst ? c.green("已装") : c.dim("未装");
     const need = m.needs.length ? c.dim(`  ← 需要 ${m.needs.join("+")}`) : "";
     say(`  ${c.cyan(m.id)}  ${badge}  ${m.title}${need}`);
     say(`       ${c.dim(m.summary)}`);
@@ -441,29 +418,22 @@ say(`版本：${target.version}${target.version === EXPECT_VERSION ? "" : c.yell
 say(`模式：${RUN ? c.green("真的装") : c.yellow("预览（不写任何文件）")}`);
 say("");
 
-let { ids: picked, added } = select();
+const { ids: picked, added } = select();
 if (added.length) warn(`自动带上前置补丁：${added.join(" / ")}（后面的补丁改的是同一段代码）`);
 
 const IS_122 = /^1\.22\./.test(target.version);
 if (!IS_122 && !FORCE) {
   die(
-    `版本不一样：你的 ${target.version}，补丁实测过的是 1.22.3 和 1.22.9。\n` +
+    `版本不一样：你的 ${target.version}，补丁实测过的是 1.22.3 / 1.22.7 / 1.22.9。\n` +
       `  1.22.x 的小改版可以直接装（锚点对不上会整份回滚，不会改坏文件）；\n` +
       `  更大版本差异要强装才行：\n` +
       `    node installer.mjs --all --run --force\n` +
       `  装之前会自动把被改的文件备份到 ${RECORD}<时间戳>/，随时能退回。`
   );
 }
-NATIVE_ALTS = nativeVersionHistory(target.dir);
 TARGET_VER = target.version;
 
 // 先把不需要打补丁的（01 脚本）挑出来，剩下的按顺序预演
-// 上游已原生内置版本留底时，02 装上去会和原生 UI 打架，明确跳过
-if (NATIVE_ALTS && picked.some((m) => m.id === "02")) {
-  picked = picked.filter((m) => m.id !== "02");
-  warn(`第 02 号「版本留底」跳过：你的 Uranus（${target.version}）已经内置了同样的功能（turn.alts），两套一起装会在气泡上挂两份「历史」`);
-}
-
 const already = picked.filter((m) => isInstalled(target.dir, m));
 const todo = picked.filter((m) => !isInstalled(target.dir, m));
 
