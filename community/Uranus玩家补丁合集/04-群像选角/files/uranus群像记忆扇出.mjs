@@ -42,6 +42,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { fileURLToPath } from "node:url";
@@ -308,7 +309,7 @@ async function buildDigest(seg) {
     return t;
   }
   if (seg.text.length <= 30000) return null;
-  const cache = `/tmp/uranus-digest-${seg.fingerprint}.md`;
+  const cache = path.join(os.tmpdir(), `uranus-digest-${seg.fingerprint}.md`);
   if (!REFRESH && fs.existsSync(cache)) {
     const t = fs.readFileSync(cache, "utf8");
     console.log(`· 复用已算好的纪要 ${cache}（${t.length} 字）`);

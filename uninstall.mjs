@@ -14,6 +14,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -51,7 +52,7 @@ function exists(p) {
 }
 
 function findTarget() {
-  const tries = [process.env.URANUS_DIR, path.join(HERE, ".."), process.cwd(), path.join(process.env.HOME ?? "", "Uranus_Imessage")];
+  const tries = [process.env.URANUS_DIR, path.join(HERE, ".."), process.cwd(), path.join(os.homedir(), "Uranus_Imessage")];
   for (const dir of tries) {
     if (!dir) continue;
     const pkg = path.join(dir, "package.json");
@@ -138,7 +139,7 @@ for (const name of use) {
     /* 忽略 */
   }
 }
-if (modsAll.has("01")) {
+if (modsAll.has("01") && process.platform === "darwin") {
   try {
     execFileSync("bash", [path.join(HERE, "patches", "01-nosleep-guard", "uninstall.command"), "--yes"], { stdio: "pipe" });
     ok("第 01 号（唤醒防断流）的定时任务已移除");

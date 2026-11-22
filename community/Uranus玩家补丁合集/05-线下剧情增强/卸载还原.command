@@ -14,6 +14,6 @@ elif [ -d "$HOME/Uranus_Imessage" ]; then export URANUS_DIR="$HOME/Uranus_Imessa
 else echo "✗ 没找到 Uranus_Imessage"; read -r -p "按回车退出…"; exit 1; fi
 
 cd "$HERE/files" || exit 1
-node 卸载器.mjs --run
+node uninstaller.mjs --run
 
 read -r -p "按回车退出…"

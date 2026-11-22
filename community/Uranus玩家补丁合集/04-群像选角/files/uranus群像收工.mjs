@@ -24,6 +24,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -33,7 +34,7 @@ const ROOT = path.resolve(HERE, "..");                     // ~/Uranus_Imessage
 const DATA = process.env.URANUS_DATA_DIR || path.join(ROOT, "data");
 const SERVER_SRC = path.join(ROOT, "server", "src");
 const FANOUT = path.join(HERE, "uranus群像记忆扇出.mjs");
-const MATERIAL_DIR = "/tmp/uranus-closeout";
+const MATERIAL_DIR = path.join(os.tmpdir(), "uranus-closeout"); // Windows 上没有 /tmp
 
 // —— 参数 ——
 const argv = process.argv.slice(2);

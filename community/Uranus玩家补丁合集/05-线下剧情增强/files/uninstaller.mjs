@@ -7,13 +7,14 @@
  * 还原一定是干净的。
  *
  * 用法：
- *   node uninstall.mjs              预览：会用哪份备份、还原哪些文件
- *   node uninstall.mjs --run        还原最近一次安装
- *   node uninstall.mjs --run --all  按时间倒序还原全部（装过好几次时用）
- *   node uninstall.mjs --run --keep 还原但保留备份文件夹（想留个后路）
+ *   node uninstaller.mjs              预览：会用哪份备份、还原哪些文件
+ *   node uninstaller.mjs --run        还原最近一次安装
+ *   node uninstaller.mjs --run --all  按时间倒序还原全部（装过好几次时用）
+ *   node uninstaller.mjs --run --keep 还原但保留备份文件夹（想留个后路）
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -51,7 +52,7 @@ function exists(p) {
 }
 
 function findTarget() {
-  const tries = [process.env.URANUS_DIR, path.join(HERE, ".."), process.cwd(), path.join(process.env.HOME ?? "", "Uranus_Imessage")];
+  const tries = [process.env.URANUS_DIR, path.join(HERE, ".."), process.cwd(), path.join(os.homedir(), "Uranus_Imessage")];
   for (const dir of tries) {
     if (!dir) continue;
     const pkg = path.join(dir, "package.json");
@@ -78,7 +79,7 @@ function listBackups(dir) {
 say(c.bold("\nuranus_patches_awesome · 卸载\n"));
 
 const target = findTarget();
-if (!target) die("没找到 Uranus 安装目录。指定一下：URANUS_DIR=/路径/Uranus_Imessage node uninstall.mjs --run");
+if (!target) die("没找到 Uranus 安装目录。指定一下：URANUS_DIR=/路径/Uranus_Imessage node uninstaller.mjs --run");
 
 say(`Uranus：${c.bold(target)}`);
 
@@ -124,7 +125,7 @@ for (const name of use) {
 
 if (!RUN) {
   say(c.dim("预览到此为止。真要还原："));
-  say(c.bold("  node uninstall.mjs --run"));
+  say(c.bold("  node uninstaller.mjs --run"));
   process.exit(0);
 }
 
@@ -138,7 +139,7 @@ for (const name of use) {
     /* 忽略 */
   }
 }
-if (modsAll.has("01")) {
+if (modsAll.has("01") && process.platform === "darwin") {
   try {
     execFileSync("bash", [path.join(HERE, "patches", "01-nosleep-guard", "uninstall.command"), "--yes"], { stdio: "pipe" });
     ok("第 01 号（唤醒防断流）的定时任务已移除");

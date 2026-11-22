@@ -138,6 +138,7 @@
     <a href="#m4">04 群像舞台</a>
     <a href="#m5">05 线下增强</a>
     <a href="#install">安装</a>
+    <a href="#windows">Windows</a>
     <a href="#safety">隐私与实测</a>
   </nav>
 </div></div>
@@ -151,7 +152,7 @@
     <span class="badge ok">✓ 可单独卸载</span>
     <span class="badge ok">✓ 零隐私</span>
     <span class="badge ok">✓ 原版实测通过</span>
-    <span class="badge">macOS / Windows</span>
+    <span class="badge">macOS 5/5 · Windows 3/5</span>
   </div>
   <div class="hero-note">📖 下面的示意图都是<b>根据原版源码里的真实界面绘制</b>的，不是凭空画的。所有文字（按钮名、气泡标题、状态提示）都取自真实界面，方便你对号入座。</div>
 </header>
@@ -376,11 +377,11 @@
 
   <h3 class="mini">怎么用</h3>
   <ol class="steps">
-    <li>双击模块文件夹里的 <code>安装.command</code>：自动备份 → 复制组件 → 插 3 处锚点（前端 2 + 后端 1）→ <code>npm run build</code> → 重启 Uranus；任一步失败会自动回滚。</li>
+    <li>双击模块文件夹里的 <code>安装.command</code>（macOS）或 <code>安装.bat</code>（Windows）：自动备份 → 复制组件 → 插 3 处锚点（前端 2 + 后端 1）→ <code>npm run build</code> → 重启 Uranus；任一步失败会自动回滚。</li>
     <li>浏览器 <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> 硬刷新，角落出现「运行日志」胶囊即成功。</li>
     <li>点胶囊展开：上面是链路状态，下面是实时日志（级别筛选 / 搜索 / 暂停 / 清空）。断网、限流、超时立刻变红。</li>
     <li>点右上角 <code>模型</code>：选角色（或「全部角色」）→ 选模型 → 选档位（聊天 / 线下 / 兜底）→ 点「切换」。右侧小字会变成「模型已切到 …」。</li>
-    <li>想撤销：双击同目录的 <code>卸载还原.command</code>，它会把 <code>shell.jsx</code> 和 <code>index.js</code> 还原成装之前的样子（实测字节一致）并重新构建。</li>
+    <li>想撤销：双击同目录的 <code>卸载还原.command</code> / <code>卸载还原.bat</code>，它会把 <code>shell.jsx</code> 和 <code>index.js</code> 还原成装之前的样子（实测字节一致）并重新构建。</li>
   </ol>
 
   <details><summary>原理与兼容性（点开）</summary><div class="details-body">
@@ -390,7 +391,7 @@
       <dt>改了哪些文件</dt><dd>新增 <code>client/src/logdrawer.jsx</code>；<code>client/src/shell.jsx</code> 两处锚点后各插 1 行；<code>server/src/index.js</code> 在 <code>app.get("/api/config/path")</code> 前插入 1 个接口。<b>没有改任何数据结构</b>，改的都是角色卡原有字段。</dd>
       <dt>为什么用"锚点插入"</dt><dd><code>shell.jsx</code> / <code>index.js</code> 常被其他本地补丁改过，整文件替换会失败；锚点插入只认原版一定存在的几行，跟其他补丁互不打扰，重复运行也不会重复插入。</dd>
       <dt>实测记录</dt><dd>在干净的原版 1.22.3 副本上装→卸往返验证：安装后 <code>shell.jsx</code> 含 <code>LiveLogDrawer</code>、<code>index.js</code> 含 <code>/api/role-model</code>；卸载后两个文件与基线<b>逐字节一致</b>。接口实测：批量改两个角色的「聊天+兜底」、单独改一个角色的「线下」均成功落盘；给一个被关闭的模型会返回 400「这个模型是关着的」，服务商不存在返回 404。</dd>
-      <dt>兼容性</dt><dd>只用上游已有的图标库、主题变量、日志 API 和 <code>labels.js</code> 导出的辅助函数，无新增依赖。Mac / Windows 源码完全相同，只是构建和重启命令不同。已在原版 1.22.x 上逐条验证锚点存在。</dd>
+      <dt>兼容性</dt><dd>只用上游已有的图标库、主题变量、日志 API 和 <code>labels.js</code> 导出的辅助函数，无新增依赖。Mac / Windows 走的是同一份补丁逻辑（<code>install.mjs</code> + <code>apply.js</code>），差别只在「怎么构建、怎么重启」：macOS 用 <code>launchctl</code>，Windows 用 <code>taskkill</code> + 重开启动器。已在原版 1.22.x 上逐条验证锚点存在。</dd>
     </dl>
   </div></details>
 </section>
@@ -559,7 +560,7 @@
     <div class="mnum">04</div>
     <div><h2>群像舞台</h2><div class="sub">Cast Stage · 一场戏勾选出场，现场读单人卡，收工自动写记忆</div></div>
   </div>
-  <div class="tagrow"><span class="tag g">原版可装</span><span class="tag">需改服务端</span><span class="tag">零硬编码</span><span class="tag">与 01/05 共存</span></div>
+  <div class="tagrow"><span class="tag g">原版可装</span><span class="tag">需改服务端</span><span class="tag">零硬编码</span><span class="tag">Mac / Windows</span></div>
 
   <div class="pain"><b>痛点场景：</b>原版线下剧情<b>一次只能演一个角色</b>。想让几个人同场演一场戏？原版做不到。老办法是把几个人设硬塞进一张卡——改一个角色的人设，别的戏全受影响，串味、难维护。</div>
 
@@ -661,7 +662,7 @@
     <div class="mnum">05</div>
     <div><h2>线下剧情增强</h2><div class="sub">Offline Enhancing · 版本留底 / 气泡样式 / 模型token / 四钮跳转</div></div>
   </div>
-  <div class="tagrow"><span class="tag g">原版可装</span><span class="tag">四个功能一次装</span><span class="tag">也可单装</span><span class="tag">20 项自检</span></div>
+  <div class="tagrow"><span class="tag g">原版可装</span><span class="tag">四个功能一次装</span><span class="tag">也可单装</span><span class="tag">Mac / Windows</span></div>
 
   <div class="pain"><b>这一模块打包了四个小功能</b>，都作用在线下剧情页：重 roll 之后旧稿没了？气泡配色手机电脑不一致？不知道这轮用的哪个模型、花了多少 token？翻长剧情全靠手滑？——一次全解决。</div>
 
@@ -829,13 +830,113 @@
     <li>每个模块一个文件夹，双击里面的 <code>安装.command</code>（macOS）。装在非默认位置就设 <code>URANUS_ROOT</code> 环境变量。</li>
     <li><b>建议一个一个装</b>，装完一个验证没问题再装下一个。每个都能单独卸载（<code>卸载还原.command</code>），互不影响。</li>
     <li>装完涉及前端的（01、04、05），浏览器 <kbd>Cmd</kbd>+<kbd>R</kbd> 强刷；涉及服务端的（03、04、05），脚本会提示重启 Uranus。</li>
-    <li>Windows：进文件夹用 <code>bash 安装.command</code> 跑；02、03 是 macOS 定时任务，Windows 跳过。</li>
+    <li><b>Windows</b>：双击同一文件夹里的 <code>安装.bat</code>（01 / 04 / 05 有）。02、03 只有 macOS 版，原因见 <a href="#windows">Windows 一节</a>。</li>
   </ol>
 
   <div class="callout blue">💡 <b>升级 Uranus 后怎么办？</b> 这些补丁用"锚点插入"而非整文件覆盖，重跑一次安装脚本即可（它会提示"已装 / 重装"）。若版本差太多导致锚点对不上，安装脚本会报错并回滚，不会改坏你的文件。</div>
 </section>
 
 <!-- ============ 隐私与实测 ============ -->
+<section class="module" id="windows">
+  <div class="module-head">
+    <div class="mnum" style="background:#2f6b52">Win</div>
+    <div><h2>在 Windows 上装</h2><div class="sub">同一份补丁逻辑，两扇门：<code>.command</code> 给 macOS，<code>.bat</code> 给 Windows</div></div>
+  </div>
+
+  <p>先把结论说清楚：<b>01 / 04 / 05 在 Windows 上能用，02 / 03 只有 macOS 版。</b></p>
+  <p style="color:var(--ink-2)">这不是"懒得做"，而是那两个模块踩的地基只有 macOS 才有（一个是 <code>launchd</code> 定时任务，一个靠启动器把日志落到 <code>uranus.log</code>）。硬塞一个装不上的脚本给你，比说清楚更糟。原因写在下面，你可以自己判断要不要。</p>
+
+  <h3 class="mini">哪些能用</h3>
+  <table>
+    <thead><tr><th>模块</th><th>Windows</th><th>怎么装</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td><b>01 日志抽屉 + 模型快切</b></td><td class="yes">✓ 可用</td><td>双击 <code>安装.bat</code></td><td>纯前端 + 一个 Node 接口，跨平台无差别</td></tr>
+      <tr><td><b>02 唤醒自愈</b></td><td class="no">— 仅 macOS</td><td>—</td><td>靠 <code>launchd</code> + <code>pmset</code> 读唤醒时间；而且这个坑本身是 macOS 睡醒后网络栈挂死</td></tr>
+      <tr><td><b>03 入站看门狗</b></td><td class="no">— 仅 macOS</td><td>—</td><td>判据是 <code>uranus.log</code> 里的连接标记；Windows 版 Uranus 的日志只在内存和控制台窗口里，不落盘</td></tr>
+      <tr><td><b>04 群像舞台</b></td><td class="yes">✓ 可用</td><td>双击 <code>安装.bat</code></td><td>服务端 + 前端补丁，装完记得到角色页给舞台卡选模型</td></tr>
+      <tr><td><b>05 线下剧情增强</b></td><td class="yes">✓ 可用</td><td>双击 <code>安装.bat</code></td><td>四个功能一次装；内部 01 号（唤醒自愈）在 Windows 上会自动跳过</td></tr>
+    </tbody>
+  </table>
+
+  <figure><div class="fig">
+  <svg viewBox="0 0 1000 250" role="img" aria-label="同一份补丁逻辑的两个入口">
+    <defs>
+      <marker id="arw" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 Z" fill="#b9b4aa"/></marker>
+    </defs>
+    <rect width="1000" height="250" fill="#fdfcf9"/>
+    <g font-family="inherit">
+      <rect x="26" y="52" width="176" height="62" rx="12" fill="#fff" stroke="#e3dfd7"/>
+      <text x="114" y="80" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2a28">macOS</text>
+      <text x="114" y="100" text-anchor="middle" font-size="12" fill="#8b867d">双击 安装.command</text>
+
+      <rect x="26" y="140" width="176" height="62" rx="12" fill="#fff" stroke="#e3dfd7"/>
+      <text x="114" y="168" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2a28">Windows</text>
+      <text x="114" y="188" text-anchor="middle" font-size="12" fill="#8b867d">双击 安装.bat</text>
+
+      <rect x="286" y="86" width="212" height="84" rx="12" fill="#eef4f0" stroke="#cfe0d6"/>
+      <text x="392" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#2f6b52">同一份 Node 逻辑</text>
+      <text x="392" y="138" text-anchor="middle" font-size="12" fill="#5d7a68">找目录 → 备份 → 插锚点</text>
+      <text x="392" y="156" text-anchor="middle" font-size="12" fill="#5d7a68">→ 语法检查 → 构建前端</text>
+
+      <rect x="582" y="86" width="176" height="84" rx="12" fill="#fff" stroke="#e3dfd7"/>
+      <text x="670" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2a28">重启 Uranus</text>
+      <text x="670" y="138" text-anchor="middle" font-size="12" fill="#8b867d">macOS：launchctl</text>
+      <text x="670" y="156" text-anchor="middle" font-size="12" fill="#8b867d">Windows：taskkill + 启动.bat</text>
+
+      <rect x="842" y="86" width="132" height="84" rx="12" fill="#fff" stroke="#e3dfd7"/>
+      <text x="908" y="122" text-anchor="middle" font-size="14" font-weight="700" fill="#2b2a28">界面生效</text>
+      <text x="908" y="144" text-anchor="middle" font-size="12" fill="#8b867d">强刷一次浏览器</text>
+
+      <path d="M204 83 L282 110" stroke="#b9b4aa" stroke-width="2" fill="none" marker-end="url(#arw)"/>
+      <path d="M204 171 L282 146" stroke="#b9b4aa" stroke-width="2" fill="none" marker-end="url(#arw)"/>
+      <line x1="500" y1="128" x2="578" y2="128" stroke="#b9b4aa" stroke-width="2" marker-end="url(#arw)"/>
+      <line x1="760" y1="128" x2="838" y2="128" stroke="#b9b4aa" stroke-width="2" marker-end="url(#arw)"/>
+    </g>
+  </svg>
+  <div class="fig-cap">两扇门，一条路：<code>.bat</code> 和 <code>.command</code> 都只是"启动器"，真正改代码的是同一份 Node 脚本。所以两边装出来的结果一模一样，唯一不同的是最后怎么把服务拉回来。</div>
+  </div></figure>
+
+  <h3 class="mini">Windows 三步</h3>
+  <ol class="steps">
+    <li><b>装 Node.js 20 或更新</b>（nodejs.org 下 LTS，一路下一步）。装完最好注销一次，让 <code>PATH</code> 生效。</li>
+    <li><b>先让 Uranus 正常跑起来</b>：双击 Uranus 目录里的 <code>启动.bat</code>，浏览器能打开 <code>127.0.0.1:8787</code> 就行。补丁要在"已经能跑"的基础上装。</li>
+    <li><b>双击补丁文件夹里的 <code>安装.bat</code></b>。它会自己：备份 → 改代码 → 检查语法 → <code>npm run build</code> → 重启 Uranus。最后打一行"✓ 安装完成"就成功了。</li>
+  </ol>
+
+  <div class="callout blue">💡 <b>装在别的地方？</b>先在那个黑窗口里 <code>set URANUS_ROOT=D:\Uranus</code> 再跑 <code>node install.mjs</code>；或者直接把 <code>Uranus_Imessage</code> 放在用户目录（<code>C:\Users\你的名字\Uranus_Imessage</code>），脚本默认就找那里。</div>
+
+  <h3 class="mini">装完注意三件事</h3>
+  <table>
+    <thead><tr><th></th><th>macOS</th><th>Windows</th></tr></thead>
+    <tbody>
+      <tr><td><b>强刷浏览器</b></td><td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td><kbd>Ctrl</kbd>+<kbd>F5</kbd></td></tr>
+      <tr><td><b>重启服务</b></td><td>安装脚本自动 <code>launchctl kickstart</code></td><td>脚本结束监听端口的 node，再开一个窗口跑 <code>启动.bat</code> 那套启动器；旧窗口停在"请按任意键继续"是正常的，关掉即可</td></tr>
+      <tr><td><b>构建前端</b></td><td><code>npm run build</code></td><td>一样，脚本内部用 <code>npm.cmd</code>；前端没构建成功界面就还是旧的</td></tr>
+    </tbody>
+  </table>
+
+  <details><summary>为什么 02 / 03 没有 Windows 版（点开）</summary><div class="details-body">
+    <dl class="kv">
+      <dt>02 唤醒自愈</dt><dd>它做三件事：用 <code>lsof</code> 找监听 8787 的进程、用 <code>ps</code> 读这个进程的启动时间、用 <code>pmset -g log</code> 找最近一次真实唤醒，三者比较决定要不要重启。后两件在 Windows 上没有对应命令（事件日志里能查到唤醒，但"进程启动时间 vs 唤醒时间"的比较要靠 WMI，且触发时机不同）。更关键的是：<b>它治的病是 macOS 专属</b>——Mac 睡醒后网络栈被挂死，出网全 <code>ENOTFOUND</code>；Windows 上没这个现象。</dd>
+      <dt>03 入站看门狗</dt><dd>它的判据不是"连不上"，而是<b>读日志里的两个标记谁在后</b>：「已连接，等消息中」vs「SubscribeMessageEvents UNAVAILABLE」。这条日志在 macOS 上由 launchd 把 stdout 重定向进 <code>uranus.log</code>；<b>Windows 版的日志只在内存里（最近 2000 条）和那个黑窗口里，不写文件</b>，所以没有东西可读。要做就得先给服务端加一个"回环可读的桥接状态接口"，那是另一个补丁的工作量。<span style="color:var(--ink-3)">——这条是实测读源码确认的，不是猜的。</span></dd>
+      <dt>那 Windows 遇到"能发不能收"怎么办</dt><dd>目前只能手动：控制台点重启，或关掉黑窗口重新双击 <code>启动.bat</code>。如果你愿意，可以只装 01 日志抽屉——至少能立刻看见"消息没进来"，不用对着全绿的界面猜。</dd>
+    </dl>
+  </div></details>
+
+  <details><summary>Windows 常见问题（点开）</summary><div class="details-body">
+    <dl class="kv">
+      <dt>黑窗口一闪就没了</dt><dd>Node 没装好，或者装完没重开命令行。先在 <code>cmd</code> 里敲 <code>node -v</code>，能看到 <code>v20</code> 以上再双击。</dd>
+      <dt>提示 <code>'node' 不是内部或外部命令</code></dt><dd>Node 安装时没勾"Add to PATH"，或者装完没重启。重装一遍，安装过程别取消任何默认勾选。</dd>
+      <dt><code>npm run build</code> 失败</dt><dd>多半是 <code>node_modules</code> 没装好：在 Uranus 目录里跑一次 <code>npm install</code>，再重新双击 <code>安装.bat</code>。补丁改的代码不会因此坏掉（失败会自动回滚）。</dd>
+      <dt>路径里有 <code>&amp;</code>、<code>%</code>、<code>!</code></dt><dd>批处理会解析出错。Uranus 放在 <code>D:\Uranus</code> 这种纯英文、无空格的路径最稳（中文和空格本身没问题）。</dd>
+      <dt>安全软件拦了 <code>.bat</code></dt><dd>正常现象——批处理改程序文件，任何杀软都会看一眼。放行一次即可；不放心可以先打开 <code>.bat</code> 看内容，它只做一件事：调 <code>node install.mjs</code>。</dd>
+      <dt>重启后旧窗口报错</dt><dd>安装脚本杀掉的是监听 8787 的那个 node，外面那层启动器会打印"请按任意键继续"。那个窗口使命已经结束，直接关掉；新窗口才是现在这个服务。</dd>
+    </dl>
+  </div></details>
+
+  <div class="callout green">✅ <b>诚实说明：</b>Windows 这套是这次新加的，逻辑与 macOS 完全相同（同一份 <code>install.mjs</code> / <code>apply.js</code>），差别只在最后的重启方式。macOS 上的安装→卸载往返已经逐字节验证；Windows 侧用的是"按端口找进程 + taskkill + 重开启动器"这套上游 <code>更新.bat</code> 本来就在用的做法。如果你在 Windows 上遇到问题，把黑窗口里的输出发我，我按日志改。</div>
+</section>
+
 <section class="module" id="safety">
   <div class="module-head">
     <div class="mnum" style="background:var(--good)">✓</div>

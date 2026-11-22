@@ -19,6 +19,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -39,7 +40,7 @@ const CATALOG = [
     summary: "Mac 睡醒后 Uranus 出网全废 → 自动重启一次（macOS · launchd）",
     script: "install.command",
     uninstall: "uninstall.command",
-    check: () => fileExists(homePlist()),
+    check: () => IS_MAC && fileExists(homePlist()),
   },
   {
     id: "02",
@@ -138,15 +139,18 @@ function fileExists(p) {
   }
 }
 function homePlist() {
-  return path.join(process.env.HOME ?? "", "Library", "LaunchAgents", "com.uranus.wake-restart.plist");
+  return path.join(os.homedir(), "Library", "LaunchAgents", "com.uranus.wake-restart.plist");
 }
+
+/** 01 唤醒自愈是 launchd 脚本，只有 macOS 有；别的系统一律当「没装」。 */
+const IS_MAC = process.platform === "darwin";
 
 function findTarget() {
   const tries = [];
   if (process.env.URANUS_DIR) tries.push(process.env.URANUS_DIR);
   tries.push(path.join(HERE, ".."));
   tries.push(process.cwd());
-  tries.push(path.join(process.env.HOME ?? "", "Uranus_Imessage"));
+  tries.push(path.join(os.homedir(), "Uranus_Imessage"));
 
   for (const dir of tries) {
     if (!dir) continue;
@@ -412,6 +416,16 @@ if (target.version !== EXPECT_VERSION && !FORCE) {
 const already = picked.filter((m) => isInstalled(target.dir, m));
 const todo = picked.filter((m) => !isInstalled(target.dir, m));
 
+// 01（唤醒自愈）靠 launchd，Windows / Linux 上没有对应物，选中也跳过
+if (!IS_MAC) {
+  for (let i = todo.length - 1; i >= 0; i -= 1) {
+    if (todo[i].kind === "script") {
+      warn(`第 ${todo[i].id} 号「${todo[i].title}」是 macOS 专属（launchd 定时任务），这台机器上跳过`);
+      todo.splice(i, 1);
+    }
+  }
+}
+
 if (already.length) {
   ok(`已经装过，跳过：${already.map((m) => m.id).join(" / ")}`);
 }
@@ -465,7 +479,7 @@ const plan = [];
 }
 
 function osTmp() {
-  return process.env.TMPDIR ?? "/tmp";
+  return os.tmpdir();
 }
 
 for (const m of scriptMods) {
@@ -539,7 +553,12 @@ if (patchMods.length) {
     warn("没找到 node_modules，跳过前端构建。先 npm install，再 cd client && npm run build");
   } else {
     try {
-      execFileSync("npm", ["run", "build"], { cwd: clientDir, stdio: "pipe" });
+      const win = process.platform === "win32";
+      execFileSync(win ? "npm.cmd" : "npm", ["run", "build"], {
+        cwd: clientDir,
+        stdio: "pipe",
+        shell: win,
+      });
       ok("前端已构建（client/dist）");
     } catch (e) {
       warn("前端构建失败：服务端改动已生效，但界面还是旧的。手动跑一次 cd client && npm run build");
@@ -553,6 +572,7 @@ const scriptFailed = [];
 for (const m of scriptMods) {
   const cmd = path.join(HERE, m.dir, m.script);
   try {
+    if (!IS_MAC) throw new Error("这个脚本补丁只有 macOS 版");
     execFileSync("bash", [cmd, "--yes"], { stdio: "pipe" });
     ok(`第 ${m.id} 号已装（${m.title}）`);
   } catch (e) {

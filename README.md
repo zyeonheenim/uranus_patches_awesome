@@ -3,21 +3,23 @@
 > ## 📖 先看白皮书（图文并茂，讲清每个补丁"界面变成什么样"）
 >
 > **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）
-> 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，基于原版 1.22.3 实测，零隐私。
+> 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，另有 Windows 安装与兼容矩阵，基于原版 1.22.3 实测，零隐私。
 
 > ## 🆕 新增：玩家补丁合集（日志抽屉 / 唤醒自愈 / 入站看门狗 / 群像舞台 / 线下剧情增强）
 >
 > 另一套**每模块独立、双击 `.command` 即装**、可单独卸载的补丁，放在
 > [`community/Uranus玩家补丁合集/`](community/Uranus玩家补丁合集/)。
-> 五个模块：① 常驻实时日志抽屉 + 模型快切（聊天/线下/兜底，就地切换）；② 睡醒后网络卡死自动重启；
-> ③ 入站断流每 60 秒巡检自愈；④ 群像舞台——线下剧情勾选出场角色、读各自人设、收工自动写记忆；
+> 五个模块：① 常驻实时日志抽屉 + 模型快切（聊天/线下/兜底，就地切换）；② 睡醒后网络卡死自动重启（macOS）；
+> ③ 入站断流每 60 秒巡检自愈（macOS）；④ 群像舞台——线下剧情勾选出场角色、读各自人设、收工自动写记忆；
 > ⑤ 线下剧情增强——版本留底 / 气泡样式 / 模型token / 右缘四钮快速跳转。
+>
+> **Windows 支持**：01 / 04 / 05 双击模块里的 `安装.bat` 即可（同一份 Node 逻辑）；02 / 03 依赖 macOS 的 launchd 与 `uranus.log`，只有 macOS 版——原因和 Windows 常见问题见[白皮书的 Windows 一节](https://zyeonheenim.github.io/uranus_patches_awesome/#windows)。
 >
 > 这一套已彻底脱敏：**不含任何角色名、人设、密钥、账号或个人信息**，模型与 API key
 > 全部在安装后从玩家自己的 Uranus 配置里读取。详见合集中的 `README.md` 与各模块说明。
 > 下方原有五个补丁（统一安装器那套，含新增的 05 四钮跳转）保持不变，两套互不影响。
 
-![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT%20%2F%20non--commercial-lightgrey)
 ![Base](https://img.shields.io/badge/Uranus-1.22.3-blue)
 ![Patches](https://img.shields.io/badge/patches-5-orange)
@@ -100,7 +102,9 @@ node install.mjs --only 01 --run          # 只装唤醒防断流
 
 装完两件事：**重启 Uranus**、浏览器 **Cmd+R**（前端有缓存）。
 
-Uranus 装在哪？安装器会自己找（当前目录 / 上一层 / `~/Uranus_Imessage`）。找不到就指定：
+**Windows**：同一份 `install.mjs` 可以直接跑（`node install.mjs --all --run`）。它会用 `npm.cmd` 构建前端，并在 01 号「唤醒防断流」上自动跳过（那是 launchd 脚本，Windows 没有对应物）。装完在 Uranus 的窗口按 `Ctrl+C` 再双击 `启动.bat`，或直接关掉窗口重开。
+
+Uranus 装在哪？安装器会自己找（当前目录 / 上一层 / 家目录下的 `Uranus_Imessage`）。找不到就指定（Windows 用 `set URANUS_DIR=D:\Uranus`）：
 
 ```bash
 URANUS_DIR=/path/to/Uranus_Imessage node install.mjs --all --run

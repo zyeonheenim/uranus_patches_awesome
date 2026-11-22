@@ -47,27 +47,26 @@
 
 ```
 01-日志抽屉/
-├── apply.js                 ← 跨平台一键安装脚本（Mac / Windows 都能跑）
+├── 安装.command              ← macOS 双击安装
+├── 安装.bat                  ← Windows 双击安装
+├── 卸载还原.command / .bat   ← 对应平台的卸载
+├── install.mjs              ← 跨平台安装逻辑（两个入口最终都跑它）
+├── uninstall.mjs            ← 卸载逻辑
+├── platform.mjs             ← 找目录 / 构建前端 / 重启服务
+├── apply.js                 ← 只做"复制组件 + 插锚点"那一步
 ├── files/
 │   ├── logdrawer.jsx        ← 要放进 client/src/ 的新组件（含模型快切）
 │   └── role-model-route.js  ← 要插进 server/src/index.js 的模型快切接口
 └── README.md                ← 本文件
 ```
 
-> 安装只靠 `apply.js`（复制组件 + 插 2 行前端 + 插 1 个后端接口）。无需 git、无需其他工具。
+> 双击安装脚本即可，它按顺序做：备份 → 复制组件 → 插 3 处锚点（前端 2 + 后端 1）→ 语法检查 → `npm run build` → 重启 Uranus。任一步失败自动回滚。无需 git。
 
 ---
 
-## 四、安装（推荐：一键脚本）
+## 四、安装
 
-补丁包放在 Uranus 目录里（或任意位置），在终端里：
-
-```bash
-cd <补丁包目录>
-node apply.js            # 自动向上查找 Uranus 根目录
-# 或显式指定：
-node apply.js /path/to/Uranus
-```
+**macOS：双击 `安装.command`。Windows：双击 `安装.bat`。**
 
 脚本会：
 
@@ -76,14 +75,20 @@ node apply.js /path/to/Uranus
 3. 在 `server/src/index.js` 的 `app.get("/api/config/path")` 前插入 `POST /api/role-model`（模型快切接口），原文件备份为 `index.js.bak-logdrawer`；
 4. 已经装过会自动跳过，不会重复插入。
 
-> 脚本找不到 Uranus 根目录时，会提示你用 `node apply.js /绝对路径/Uranus`。  
+> 找不到 Uranus 目录时：设 `URANUS_ROOT` 环境变量，或直接把本文件夹放进 Uranus 里。  
 > 第 3 步找不到锚点时会**明确提示**并跳过（抽屉看日志仍可用，只是「模型」按钮不生效），不会写坏文件。
+>
+> 想手动跑也行（效果一样，但没有备份/回滚）：
+> ```bash
+> node apply.js            # 自动向上查找 Uranus 根目录
+> node apply.js /path/to/Uranus
+> ```
 
 ---
 
-## 五、构建（装完必须重新打包前端）
+## 五、构建（安装脚本会自动做，这里是手动兜底）
 
-源码改完要 `npm run build`，浏览器才会拿到新界面。
+源码改完要 `npm run build`，浏览器才会拿到新界面。安装脚本结束前会自动跑一遍；只有构建失败时你才需要手动补。
 
 ### Mac
 
@@ -112,7 +117,8 @@ npm run build
 
 ## 六、重启 Uranus 并刷新
 
-构建只是更新静态文件，**Uranus 进程本身也要重启**（或让控制台重读静态资源）才能生效。
+构建只是更新静态文件，**Uranus 进程本身也要重启**才能生效。安装脚本会自动重启：
+macOS 走 `launchctl kickstart`；Windows 会杀掉监听 8787 的 node，再开一个新窗口跑启动器（旧窗口停在「请按任意键继续」属正常，关掉即可）。
 
 ### Mac
 
