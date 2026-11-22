@@ -156,6 +156,38 @@ total += edit("prompt.js", [
         break;
       }`,
   },
+  {
+    /* 状态栏只写本场出场者：先备好这一段的文本（名字与行数按 picked 现场算） */
+    name: "case char 里准备状态栏名单（<StatusFormat>）",
+    already: `/* ${MARK}:status-format-def */`,
+    from: `            ).join("");
+            charText =`,
+    to: `            ).join("");
+            /* ${MARK}:status-format-def */
+            const NL2 = String.fromCharCode(10);
+            const userTag = vars.user || "我";
+            const statusBlock =
+              NL2 + NL2 + "## 状态栏名单（本场）" + NL2 +
+              "状态栏的人员就这几个 —— 下面 <StatusFormat> 里的每一行都要写，行首标签照抄、顺序照排；**名单里没有的人一行都不许写**，哪怕上一轮状态栏里有过他，也不沿用、不补写、不留空行占位。" + NL2 +
+              "<StatusFormat>" + NL2 +
+              picked
+                .map((r) => r.name + "衣着：<从上到下，写清颜色与状态>" + NL2 + r.name + "姿势：<身体此刻的位置与姿态>")
+                .join(NL2) + NL2 +
+              userTag + "衣着：<从上到下，写清颜色与状态>" + NL2 +
+              userTag + "姿势：<身体此刻的位置与姿态>" + NL2 +
+              "</StatusFormat>";
+            charText =`,
+  },
+  {
+    name: "case char 里挂上状态栏名单",
+    already: `/* ${MARK}:status-format-use */`,
+    from: `              blocks +
+              "\\n\\n## 人称转换（本场）`,
+    to: `              blocks +
+              /* ${MARK}:status-format-use */
+              statusBlock +
+              "\\n\\n## 人称转换（本场）`,
+  },
 ]);
 
 // ── 5. offlinestore.js 导出 setCast（指令兜底用） ──────────
@@ -286,7 +318,7 @@ total += edit("index.js", [
 total += edit("offline.js", [
   {
     name: "endOffline 触发群像收工",
-    already: `castpatch:closeout-stage`,
+    already: `${MARK}:closeout-trigger`,
     variants: [
       [
         `  endStory(roleKey, storyId);\n  /*`,
