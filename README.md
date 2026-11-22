@@ -1,5 +1,16 @@
 # uranus_patches_awesome
 
+> ## 🆕 新增：玩家补丁合集（日志抽屉 / 唤醒自愈 / 入站看门狗 / 群像舞台）
+>
+> 另一套**每模块独立、双击 `.command` 即装**、可单独卸载的补丁，放在
+> [`community/Uranus玩家补丁合集/`](community/Uranus玩家补丁合集/)。
+> 四个模块：① 左下角常驻实时日志抽屉；② 睡醒后网络卡死自动重启；
+> ③ 入站断流每 60 秒巡检自愈；④ 群像舞台——线下剧情勾选出场角色、读各自人设、收工自动写记忆。
+>
+> 这一套已彻底脱敏：**不含任何角色名、人设、密钥、账号或个人信息**，模型与 API key
+> 全部在安装后从玩家自己的 Uranus 配置里读取。详见合集中的 `README.md` 与各模块说明。
+> 下方原有四个补丁（统一安装器那套）保持不变，两套互不影响。
+
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT%20%2F%20non--commercial-lightgrey)
 ![Base](https://img.shields.io/badge/Uranus-1.22.3-blue)
