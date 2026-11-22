@@ -2,7 +2,7 @@
 
 > ## 📖 先看白皮书（图文并茂，讲清每个补丁"界面变成什么样"）
 >
-> **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）
+> **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）——章节已按**推荐安装顺序**排列，并标注 Mac / Windows 适用性
 > **📦 不想看代码？直接下整包**：[`uranus-patches-v1.1.0.zip`](https://github.com/zyeonheenim/uranus_patches_awesome/releases/latest)（五个模块 + 白皮书，解压双击安装）
 > 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，另有 Windows 安装与兼容矩阵，基于原版 1.22.3 实测，零隐私。
 
