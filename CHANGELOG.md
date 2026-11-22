@@ -2,6 +2,31 @@
 
 按「一个补丁一个功能」记。版本号指这个合集，不是 Uranus。
 
+## v1.1.0 — 2026-11-22
+
+### 新增 Windows 支持（01 / 04 / 05）
+
+- 三个模块各加 `安装.bat` / `卸载还原.bat`（纯 ASCII 批处理，只负责调 Node），以及跨平台的 `install.mjs` / `uninstall.mjs` / `platform.mjs`
+- 走的是同一份补丁逻辑：备份 → 插锚点 → 语法检查 → `npm run build` → 重启。差别只在最后一步：macOS 用 `launchctl kickstart`，Windows 用「按端口找 PID → `taskkill` → 重开启动器」，与上游 `更新.bat` 同一套做法
+- 修掉 Windows 上的几处硬伤：
+  - `process.env.HOME` 在 Windows 上是空的 → 改用 `os.homedir()`
+  - `execFileSync("npm")` 在 Windows 上找不到（npm 是 `npm.cmd`）→ 按平台走 `shell`
+  - 群像收工/扇出脚本把临时目录写死成 `/tmp` → 改用 `os.tmpdir()`
+  - 05 的安装器在非 macOS 上会去跑 `bash 01-nosleep-guard/install.command` → 按平台跳过并说明
+- 05 的 `安装器.mjs` / `卸载器.mjs` 改名为 `installer.mjs` / `uninstaller.mjs`（`.bat` 里出现中文文件名会被 cmd 误解析）
+
+### 白皮书新增「在 Windows 上装」一节
+
+- 模块 × 平台兼容矩阵、Windows 三步安装、装完注意三件事（强刷 / 重启 / 构建）
+- 写清 02 / 03 为什么没有 Windows 版：02 靠 `launchd` + `pmset` 唤醒记录，而它治的是 macOS 睡醒网络栈挂死；03 的判据是 `uranus.log` 里的连接标记，Windows 版日志只在内存和控制台窗口，不落盘
+- Windows 常见问题：一闪就没、`'node' 不是内部或外部命令`、`npm run build` 失败、路径里的 `&`、杀软拦 `.bat`、旧窗口停在「请按任意键继续」
+
+### 打包
+
+- 发布 zip 安装包（UTF-8 文件名 + 保留 `.command` 可执行位），附在本 Release
+
+---
+
 ## v1.0.2 — 2026-11-22
 
 ### 新增 `05 · 线下剧情 · 四钮快速跳转 jump-buttons`

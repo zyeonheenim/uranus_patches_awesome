@@ -34,9 +34,9 @@ echo "· Uranus 目录：${URANUS_DIR}"
 node -v >/dev/null 2>&1 || { echo "✗ 找不到 node"; read -r -p "按回车退出…"; exit 1; }
 
 cd "$HERE/files" || exit 1
-node 安装器.mjs --only 02,03,04,05 --run
+node installer.mjs --only 02,03,04,05 --run
 
 echo ""
 echo "· 装完想看界面：浏览器 Cmd+R 强刷一次"
-echo "· 想只装某一个：cd files && node 安装器.mjs --only 05 --run"
+echo "· 想只装某一个：cd files && node installer.mjs --only 05 --run"
 read -r -p "按回车退出…"

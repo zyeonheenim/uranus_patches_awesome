@@ -5,13 +5,13 @@
  * 五个补丁一个入口。默认只**预览**（不写盘），加 --run 才真的动文件。
  *
  * 用法：
- *   node install.mjs --list                  列出补丁 / 装没装 / 依赖
- *   node install.mjs                         预览：选中全部（会改哪些文件）
- *   node install.mjs --run --all             全装
- *   node install.mjs --only 02 --run         只装「版本留底」
- *   node install.mjs --only 02,03 --run      版本留底 + 气泡样式
- *   node install.mjs --all --run --no-build  跳过前端构建
- *   node install.mjs --all --run --force     版本号对不上也强装
+ *   node installer.mjs --list                  列出补丁 / 装没装 / 依赖
+ *   node installer.mjs                         预览：选中全部（会改哪些文件）
+ *   node installer.mjs --run --all             全装
+ *   node installer.mjs --only 02 --run         只装「版本留底」
+ *   node installer.mjs --only 02,03 --run      版本留底 + 气泡样式
+ *   node installer.mjs --all --run --no-build  跳过前端构建
+ *   node installer.mjs --all --run --force     版本号对不上也强装
  *
  * 设计上的两条硬规矩：
  *   1) 补丁对不上就**整份不动** —— 宁可什么都不改，也不能改坏半个文件；
@@ -19,6 +19,7 @@
  */
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -39,7 +40,7 @@ const CATALOG = [
     summary: "Mac 睡醒后 Uranus 出网全废 → 自动重启一次（macOS · launchd）",
     script: "install.command",
     uninstall: "uninstall.command",
-    check: () => fileExists(homePlist()),
+    check: () => IS_MAC && fileExists(homePlist()),
   },
   {
     id: "02",
@@ -138,15 +139,18 @@ function fileExists(p) {
   }
 }
 function homePlist() {
-  return path.join(process.env.HOME ?? "", "Library", "LaunchAgents", "com.uranus.wake-restart.plist");
+  return path.join(os.homedir(), "Library", "LaunchAgents", "com.uranus.wake-restart.plist");
 }
+
+/** 01 唤醒自愈是 launchd 脚本，只有 macOS 有；别的系统一律当「没装」。 */
+const IS_MAC = process.platform === "darwin";
 
 function findTarget() {
   const tries = [];
   if (process.env.URANUS_DIR) tries.push(process.env.URANUS_DIR);
   tries.push(path.join(HERE, ".."));
   tries.push(process.cwd());
-  tries.push(path.join(process.env.HOME ?? "", "Uranus_Imessage"));
+  tries.push(path.join(os.homedir(), "Uranus_Imessage"));
 
   for (const dir of tries) {
     if (!dir) continue;
@@ -372,7 +376,7 @@ if (LIST || !target) {
   if (!target && !LIST) {
     die(
       "没找到 Uranus 安装目录。\n" +
-        "  先指定：URANUS_DIR=/路径/Uranus_Imessage node install.mjs --all --run\n" +
+        "  先指定：URANUS_DIR=/路径/Uranus_Imessage node installer.mjs --all --run\n" +
         "  （只有第 01 号补丁可以不指定 —— 它装的是系统的定时任务）"
     );
   }
@@ -386,7 +390,7 @@ if (LIST || !target) {
     say(`       ${c.dim(m.summary)}`);
   }
   say("");
-  say(c.dim("装：node install.mjs --all --run   只装一个：node install.mjs --only 02 --run"));
+  say(c.dim("装：node installer.mjs --all --run   只装一个：node installer.mjs --only 02 --run"));
   say("");
   process.exit(0);
 }
@@ -403,7 +407,7 @@ if (target.version !== EXPECT_VERSION && !FORCE) {
   die(
     `版本不一样：你的 ${target.version}，补丁是按 ${EXPECT_VERSION} 的源码做的。\n` +
       `  小改版通常也能打上（改的是函数内部，不碰框架），但没实测过：\n` +
-      `    node install.mjs --all --run --force\n` +
+      `    node installer.mjs --all --run --force\n` +
       `  装之前会自动把被改的文件备份到 ${RECORD}<时间戳>/，随时能退回。`
   );
 }
@@ -412,12 +416,22 @@ if (target.version !== EXPECT_VERSION && !FORCE) {
 const already = picked.filter((m) => isInstalled(target.dir, m));
 const todo = picked.filter((m) => !isInstalled(target.dir, m));
 
+// 01（唤醒自愈）靠 launchd，Windows / Linux 上没有对应物，选中也跳过
+if (!IS_MAC) {
+  for (let i = todo.length - 1; i >= 0; i -= 1) {
+    if (todo[i].kind === "script") {
+      warn(`第 ${todo[i].id} 号「${todo[i].title}」是 macOS 专属（launchd 定时任务），这台机器上跳过`);
+      todo.splice(i, 1);
+    }
+  }
+}
+
 if (already.length) {
   ok(`已经装过，跳过：${already.map((m) => m.id).join(" / ")}`);
 }
 if (!todo.length) {
   ok("选中的补丁都已经在了，没有要改的。");
-  say(c.dim("  想重装：node uninstall.mjs --run 之后再装一次。"));
+  say(c.dim("  想重装：node uninstaller.mjs --run 之后再装一次。"));
   process.exit(0);
 }
 
@@ -465,7 +479,7 @@ const plan = [];
 }
 
 function osTmp() {
-  return process.env.TMPDIR ?? "/tmp";
+  return os.tmpdir();
 }
 
 for (const m of scriptMods) {
@@ -480,7 +494,7 @@ say("");
 
 if (!RUN) {
   say(c.dim("预览到此为止。真要装的话："));
-  say(c.bold(`  node install.mjs ${ALL ? "--all" : `--only ${picked.map((m) => m.id).join(",")}`} --run`));
+  say(c.bold(`  node installer.mjs ${ALL ? "--all" : `--only ${picked.map((m) => m.id).join(",")}`} --run`));
   say(c.dim("（或者在 Finder 里双击「安装.command」）"));
   process.exit(0);
 }
@@ -539,7 +553,12 @@ if (patchMods.length) {
     warn("没找到 node_modules，跳过前端构建。先 npm install，再 cd client && npm run build");
   } else {
     try {
-      execFileSync("npm", ["run", "build"], { cwd: clientDir, stdio: "pipe" });
+      const win = process.platform === "win32";
+      execFileSync(win ? "npm.cmd" : "npm", ["run", "build"], {
+        cwd: clientDir,
+        stdio: "pipe",
+        shell: win,
+      });
       ok("前端已构建（client/dist）");
     } catch (e) {
       warn("前端构建失败：服务端改动已生效，但界面还是旧的。手动跑一次 cd client && npm run build");
@@ -553,6 +572,7 @@ const scriptFailed = [];
 for (const m of scriptMods) {
   const cmd = path.join(HERE, m.dir, m.script);
   try {
+    if (!IS_MAC) throw new Error("这个脚本补丁只有 macOS 版");
     execFileSync("bash", [cmd, "--yes"], { stdio: "pipe" });
     ok(`第 ${m.id} 号已装（${m.title}）`);
   } catch (e) {
@@ -587,5 +607,5 @@ say(c.bold("装好了。接下来两件事："));
 say("  1. 重启 Uranus（关掉窗口重新打开，或控制台里的重启按钮）");
 say("  2. 浏览器 Cmd+R 强刷一次，前端才有新界面");
 if (patchMods.length) say("");
-if (box) say(c.dim(`想退回：node uninstall.mjs --run（会用 ${path.basename(box)} 还原）`));
+if (box) say(c.dim(`想退回：node uninstaller.mjs --run（会用 ${path.basename(box)} 还原）`));
 say("");
