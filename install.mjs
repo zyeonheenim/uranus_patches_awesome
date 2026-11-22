@@ -2,7 +2,7 @@
 /**
  * uranus_patches_awesome · 统一安装器
  *
- * 四个补丁一个入口。默认只**预览**（不写盘），加 --run 才真的动文件。
+ * 五个补丁一个入口。默认只**预览**（不写盘），加 --run 才真的动文件。
  *
  * 用法：
  *   node install.mjs --list                  列出补丁 / 装没装 / 依赖
@@ -74,6 +74,16 @@ const CATALOG = [
       ["server/src/llm.js", "normUsageTokens"],
       ["client/src/panels/offline.jsx", "fmtTok"],
     ],
+  },
+  {
+    id: "05",
+    dir: "patches/05-jump-buttons",
+    title: "线下剧情 · 四钮快速跳转 jump-buttons",
+    kind: "patch",
+    needs: [],
+    summary: "右缘四个圆钮：跳顶/跳底/上一条/下一条自己的发言（含 WebKit 回顶修复）",
+    patch: "05-jump-buttons.patch",
+    markers: [["client/src/panels/offline.jsx", "const jumpEdge = useCallback"]],
   },
 ];
 

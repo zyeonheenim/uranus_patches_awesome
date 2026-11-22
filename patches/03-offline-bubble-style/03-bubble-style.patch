@@ -225,7 +225,7 @@
 +      <div className="grid grid-cols-1 gap-4">
 +        {/* 实时预览：两条样例，custom 一改这里马上变 */}
 +        <div className="grid grid-cols-1 gap-2.5 rounded-item border border-line bg-sunken px-3 py-3">
-+          {preview(false, "「애기야, 手怎么这么凉。」他把外套往你肩上搭，「站这儿等多久了。」")}
++          {preview(false, "「你来了，手怎么这么凉。」他把外套往你肩上搭，「站这儿等多久了。」")}
 +          {preview(true, "没多久。刚到。")}
 +        </div>
 +
