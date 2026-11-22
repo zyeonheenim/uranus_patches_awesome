@@ -1,5 +1,10 @@
 # uranus_patches_awesome
 
+> ## 📖 先看白皮书（图文并茂，讲清每个补丁"界面变成什么样"）
+>
+> **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）
+> 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，基于原版 1.22.3 实测，零隐私。
+
 > ## 🆕 新增：玩家补丁合集（日志抽屉 / 唤醒自愈 / 入站看门狗 / 群像舞台 / 线下剧情增强）
 >
 > 另一套**每模块独立、双击 `.command` 即装**、可单独卸载的补丁，放在
