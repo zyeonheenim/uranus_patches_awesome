@@ -141,7 +141,7 @@ export function LiveLogDrawer() {
     return { text: st.text, tone: st.off ? "warn" : "normal", tag: st.off ? "已关闭" : "" };
   }
 
-  /** 全部角色时：四人都一样就显示那一个，不一样就说「各人不同」（悬停看明细）。 */
+  /** 全部角色时：大家都一样就显示那一个，不一样就说「各人不同」（悬停看明细）。 */
   function summarize(kind) {
     if (!roles.length) return { text: "还没有角色", tone: "warn", tag: "" };
     const list = roles.map((r) => ({ name: roleLabel(r), ...targetValue(r, kind) }));
