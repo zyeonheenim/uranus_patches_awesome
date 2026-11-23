@@ -20,7 +20,7 @@
  *   node uranus群像记忆扇出.mjs --file /tmp/剧情.md --present 角色A,角色B --run
  *
  *   # 直接从线下存档扇出（turns 自动拼成文本，thinking/status 自动剥掉）
- *   node uranus群像记忆扇出.mjs --story st-mw1y0z0x-1 --present 角色A,角色B,角色C,角色D --run
+ *   node uranus群像记忆扇出.mjs --story st-mw1y0z0x-1 --present 角色A,角色B --run
  *
  *   # 只扇出某一天（同一个存档演了好几天时用这个）
  *   node uranus群像记忆扇出.mjs --story st-mw7v4kxm-3 --since 2026-11-09 --present ... --run
@@ -34,8 +34,10 @@
  *   --text "..."      直接给一段
  *   --present <列表>  在场的人，逗号分隔；可带时段备注：角色A:全程,角色B:04:00后
  *   --only <列表>     只写这几个人的记忆（默认 = present 里全部）
+ *   --user-name <名字> user(玩家)轮在纪要里的署名，不传写"用户"
+ *   --cast-map "剧情名=卡名,..."  显示名和角色卡名不一致时自己配，不写死
  *   --date YYYY-MM-DD 记忆日期（默认今天）
- *   --model <prov>/<id>  拆分用的模型（默认跟角色A的线下主模型）
+ *   --model <prov>/<id>  拆分用的模型（默认取第一个角色的线下主模型）
  *   --run             真写盘（不带就是预演）
  *   --no-embed        不算向量（省一次请求，语义检索会漏这条）
  *
@@ -72,8 +74,14 @@ const NO_EMBED = has("--no-embed");
 const STORY = arg("--story");
 const FILE = arg("--file");
 const INLINE = arg("--text");
-const PRESENT_RAW = arg("--present", "角色A,角色B,角色C,角色D");
+const PRESENT_RAW = arg("--present", ""); // 必须显式传 --present，不预置任何角色名
 const ONLY_RAW = arg("--only");
+const USER_NAME = arg("--user-name", ""); // user 轮在纪要里的署名；不传就写中性标记"用户"
+// 显示名≠角色卡名时自己配：--cast-map "剧情里的名字=角色卡name,另一个=另一个卡name"
+const CAST_MAP = Object.fromEntries(
+  arg("--cast-map", "").split(",").map((x) => x.split("=")).filter((a) => a.length === 2)
+    .map(([a, b]) => [a.trim(), b.trim()])
+);
 const MODEL_ARG = arg("--model");
 const SINCE = arg("--since");
 const DIGEST_FILE = arg("--digest");
@@ -88,27 +96,15 @@ const DATE = arg("--date", today);
 
 /* ------------------------------------------------------------ 角色对照 */
 
-const ALIAS = { 角色C: ["角色C", "角色C", "角色C"], 角色D: ["角色D", "Wonbin", "Anton"] };
-const CALL = {
-  角色A: "叫她「宝宝／애기야／우리애기」，正事叫「김지원」",
-  // 2026-11-10 改：日常 지원이；正事/生气 김지원；外人在场 김지원 씨；酒后失控 지원아；禁 지원 씨
-  角色B: "日常叫她「지원이」，正事或生气叫「김지원」，外人在场才「김지원 씨」，喝了酒才叫「지원아」；绝不叫「지원 씨」",
-  角色C: "叫她「지원아」；他是日籍，回忆里偶尔会冒出日语词",
-  角色D: "叫她「누나」，公事叫「대표님」；她叫他「小狗／小老公」",
-};
-const VOICE = {
-  角色A: "长句绕圈子、生气时整段韩语、事后用中文认错；口头禅 ㅡㅡ（打字时才有，写进回忆要化成「哼」一声）",
-  角色B: "极简短句，两个字能说完不说三个；关心只说一次；冷幽默说完自己没表情；偶尔没头没尾",
-  角色C: "说话带身体感（重心、拍子、手停在哪）；笑着把场子拉回来；中文里偶尔掉日语",
-  角色D: "紧张或说英文时冒俚语（no way／for real?／I'm so done）；会「汪」；撒娇能说很长一段",
-};
-
 const config = loadConfig();
 const roles = (config.roles ?? []).filter((r) => r.id !== "r-group" && r.id !== "r-cast-stage"); /* castpatch:exclude-stage */
 
 function findRole(label) {
-  const names = ALIAS[label] ?? [label];
-  return roles.find((r) => names.includes(r.name));
+  const norm = (x) => String(x ?? "").trim().toLowerCase().replace(/\s+/g, "");
+  let want = norm(CAST_MAP[label] ?? label); // 先查用户自配的显示名映射
+  // 通用匹配：映射/精确 → 互相包含（兼容大小写、空格、部分写法差异），不写死任何具体角色
+  return roles.find((r) => norm(r.name) === want)
+    ?? roles.find((r) => norm(r.name).includes(want) || want.includes(norm(r.name)));
 }
 
 const present = PRESENT_RAW.split(",")
@@ -153,7 +149,7 @@ function fromStory(id, since) {
     const stamp = ts
       ? ts.toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).slice(0, 16)
       : "";
-    const who = t.role === "user" ? "主角" : "";
+    const who = t.role === "user" ? (USER_NAME || "用户") : "";
     lines.push(`[${stamp}]${who ? " " + who + "：" : "\n"}${body}`);
   }
   if (since && skipped) console.log(`· --since ${since}：跳过 ${skipped} 个更早的 turn`);
@@ -162,7 +158,7 @@ function fromStory(id, since) {
 
 /*
  * 小总结模式：线下每攒一段就写一条小总结（`story.summaries`），落盘时进的是
- * 群像自己的记忆库（`role-r-group`）。那个库只有一份集体记忆，四个人的库里
+ * 群像自己的记忆库（`role-r-group`）。那个库只有一份集体记忆，各角色的库里
  * 什么都没有 —— 所以按人再扇一遍，用**小总结**当底稿：一条小总结 = 一段戏，
  * 每人每段一条 POV。比拿整部存档压一次纪要更细，也不会漏掉后半夜。
  */
@@ -225,7 +221,7 @@ function endpoint() {
     if (!ep) throw new Error(`模型 ${MODEL_ARG} 解析不出来（没启用 / 没配 url）`);
     return ep;
   }
-  const host = roles.find((r) => r.name === "角色A") ?? roles[0];
+  const host = roles[0];
   const ref = host?.offline?.model ?? host?.chatModel;
   const ep = resolveEndpoint(config, ref ?? {});
   if (!ep) throw new Error("默认模型解析不出来，用 --model prov-x/m-y 指定一个");
@@ -248,7 +244,7 @@ const DIGEST_SYSTEM = `你是群像剧情的时间线纪要压器。给你一段
 硬规矩：
 1. 按时间顺序，每条以「剧情内时间 + 地点」开头，例：22:40 顶层公寓客厅。
 2. 只写**发生了什么**：谁做了什么、说了哪句关键原话、伤口/身体/物品的状态变化、做出的决定、达成的约定。不写气氛、不写心理总结、不写比喻。
-3. 人名一个不许省（角色A／角色B／角色C／角色D／主角），动作的主体写在最前面。
+3. 人名一个不许省，照材料里出现的原样写，动作的主体写在最前面。
 4. 谁不在场、谁中途离开、谁被蒙在鼓里 —— 明确写出来。
 5. 不许编：原文没有的不许补，拿不准的宁可不写。
 6. 输出纯条目，每条一行，信息密度要高，长度约为原文的十分之一。`;
@@ -345,7 +341,7 @@ const SYSTEM_SHARED = `你是群像剧情的长记忆整理员。
 给你一整天的剧情材料，你要写出**这一天从头到尾发生了什么**——一份给所有在场角色共用的记忆。群像默认全场细节共享：凡勾进本场的角色，这一天发生的事他都算在场知情，不再分"他看得见/看不见"。
 
 硬规矩：
-1. 第三人称过去时。**人名一律直接写本人的名字（角色A／角色B／角色C／角色D），全程不许出现叙述性的「我」**——记忆按人名登记，混进群像时一眼能认。只有引号里的直接引语（人物原话）可以保留「我」。主角写「她」即可。
+1. 第三人称过去时。**人名一律照材料里出现的写法直接写，全程不许出现叙述性的「我」**——记忆按人名登记，混进群像时一眼能认。只有引号里的直接引语（人物原话）可以保留「我」。
 2. **全知、中性、不挑视角**：材料里发生的事全部写进来，不写"他只看见""她不知道""他后来才听说"这类限知句。谁做了什么、谁说了哪句、身体/物品状态如何变化，一律平铺直叙。
 3. 具体：时间、地点、动作、原话、状态。不写「气氛很紧张」这种概括，写「他把车钥匙放在玄关台面上，没抬眼」。韩语原话保留韩文，后面用括注带一句中文。
 4. 长度跟着材料走：材料事实充足时写 1600–2000 字、四到六段；**材料只覆盖一小段时间就写短（几百字也可以）——绝不为凑字数编造材料里没有的情节**。材料没写的清晨、白天、晚上一律当没发生；「从凌晨写到深夜」只在材料确实覆盖全天时才成立。不用小标题，不用总结句。
@@ -359,9 +355,9 @@ const SYSTEM = SHARED ? SYSTEM_SHARED : `你是群像剧情的长记忆拆分器
 给你一段四个人同时在场的剧情，以及其中一个人的名字，你要写出**这个人自己的那段记忆** —— 事后回想起来的样子。
 
 硬规矩：
-1. 第三人称过去时。**叙述主角一律直接写他自己的名字（角色A／角色B／角色C／角色D），全程不许出现叙述性的「我」**——记忆要按人名登记，混进群像时谁的就是谁的，不靠猜。只有引号里的直接引语（人物原话）可以保留「我」。主角写「她」即可。
+1. 第三人称过去时。**叙述主角一律照材料里出现的写法写他自己的名字，全程不许出现叙述性的「我」**——记忆要按人名登记，混进群像时谁的就是谁的，不靠猜。只有引号里的直接引语（人物原话）可以保留「我」。
 2. **只写他亲眼看见、亲耳听见、亲身经历的。** 他不在场的时候发生的事、别人背着他做的决定、别人心里想的东西 —— 一个字都不许写。他只能从痕迹里推测（手背上的血痂、绷带、红肿的眼睛、桌上留下的发圈）。
-3. 用他本人的称呼和说话方式（会给你）。别人怎么叫他、他怎么叫别人，一个都不能串。
+3. 称呼和说话方式照材料里这个人实际的说法来写。别人怎么叫他、他怎么叫别人，一个都不能串。
 4. 具体：时间、地点、动作、原话。不写「气氛很紧张」这种概括，写「他把车钥匙放在玄关台面上，没抬眼」。
 5. 长度跟着材料走：材料事实充足时写 1650–1900 字、三到五段；**材料只覆盖一小段时间就写短（几百字也可以）——绝不为凑字数编造材料里没有的情节**。材料没写的清晨、白天、晚上一律当没发生；「从凌晨写到深夜」只在材料确实覆盖全天时才成立。不用小标题，不用总结句。
 6. 材料里以**计划、约定、对话**形式出现的事（比如「明天公证人上门」「暗房改到下午两点」），只能写成当时被提起、说好的话，**绝不能写成已经发生的事**。
@@ -387,8 +383,7 @@ function userPrompt(seg, label, note) {
     .join("、");
 
   return `【要写记忆的人】${label}
-【他的称呼方式】${CALL[label] ?? "按他自己的习惯"}
-【他的说话方式】${VOICE[label] ?? "按他人设"}
+【称呼与语气】照下面材料里这个人实际的说法、别人对他的称呼来写，不要臆造材料里没有的称呼或口癖
 【这场戏在场的人】${present.map((p) => `${p.label}${p.note ? `（${p.note}）` : "（全程）"}`).join("、")}
 【不在场或中途才到的人】${others || "无"}
 【日期】${seg.date}
