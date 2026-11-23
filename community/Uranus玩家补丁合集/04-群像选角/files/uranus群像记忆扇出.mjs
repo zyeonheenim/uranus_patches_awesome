@@ -46,9 +46,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const SERVER_SRC = "/Users/zhiyuanpan/Uranus_Imessage/server/src";
-const DATA = "/Users/zhiyuanpan/Uranus_Imessage/data";
+// 不写死任何本机路径：脚本装在 Uranus_Imessage/patches 下，根目录就是上一层。
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(HERE, "..");
+const SERVER_SRC = path.join(ROOT, "server", "src");
+const DATA = path.join(ROOT, "data");
 
 const { loadConfig, resolveEndpoint } = await import(`${SERVER_SRC}/config.js`);
 const { chatCompletion } = await import(`${SERVER_SRC}/llm.js`);
