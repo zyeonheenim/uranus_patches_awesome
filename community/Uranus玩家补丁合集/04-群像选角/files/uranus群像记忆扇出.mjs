@@ -1,27 +1,29 @@
 #!/usr/bin/env node
 /**
- * 群像记忆扇出 · 一条剧情 → 四份 POV 记忆
+ * 群像记忆扇出 v2 · 一天一份全知总结 → 原样写进在场每个角色的记忆库
  *
- * 一条四个人同时在场的剧情，四个人各自「记住」的版本是不一样的：
- * 谁在场、谁只听到转述、谁根本不在 —— 记忆必须跟着这个走，否则以后线上
- * 聊天就会穿帮（「那天我又不在」）。
+ * v1 是「每人一条限知 POV」：谁看见什么就只写什么。v2（2026-11-23）改为
+ * 「群像默认全场细节共享」——凡勾进本场的角色全程在场，同一份文本原样写进
+ * 每个在场者的库。生成只有一次，写入有 N 次；没出场的角色一个字都不写。
  *
- * 这个脚本干的就是那件事：读一段群像剧情，按在场矩阵给每个在场的人写一条
- * 第一人称 POV 记忆，带 3072 维向量，分别写进他自己的记忆库。
+ * 幂等按剧情指纹 `cast:<来源>-<日期>.md-<字数>`，不再按日期 + 任意 pov: 条目
+ * 判定——后者会让同日另一场戏的 POV 误挡本场，11-22 就是这么丢的。
+ *
+ * 加 --pov 可退回 v1 逐人限知模式（调试用，不推荐）。
  *
  * 用法（managed node）：
  *
  *   # 预演：只生成不写盘，看四份稿子长什么样
- *   node uranus群像记忆扇出.mjs --file /tmp/剧情.md --present 角色A,角色B
+ *   node uranus群像记忆扇出.mjs --file /tmp/剧情.md --present 郑成灿,宋银硕
  *
  *   # 真写
- *   node uranus群像记忆扇出.mjs --file /tmp/剧情.md --present 角色A,角色B --run
+ *   node uranus群像记忆扇出.mjs --file /tmp/剧情.md --present 郑成灿,宋银硕 --run
  *
  *   # 直接从线下存档扇出（turns 自动拼成文本，thinking/status 自动剥掉）
- *   node uranus群像记忆扇出.mjs --story st-示例剧情-1 --present 角色A,角色B,角色C --run
+ *   node uranus群像记忆扇出.mjs --story st-mw1y0z0x-1 --present 郑成灿,宋银硕,将太郎,李灿荣 --run
  *
  *   # 只扇出某一天（同一个存档演了好几天时用这个）
- *   node uranus群像记忆扇出.mjs --story st-示例剧情-1 --since YYYY-MM-DD --present ... --run
+ *   node uranus群像记忆扇出.mjs --story st-mw7v4kxm-3 --since 2026-11-09 --present ... --run
  *
  * 参数：
  *   --story <id>      读 data/offline/stories/<id>.json
@@ -30,29 +32,26 @@
  *   --refresh-digest  忽略 /tmp 的纪要缓存，重新压一遍
  *   --file <path>     读一份纯文本剧情
  *   --text "..."      直接给一段
- *   --present <列表>  在场的人，逗号分隔；可带时段备注：角色A:全程,角色B:04:00后
+ *   --present <列表>  在场的人，逗号分隔；可带时段备注：郑成灿:全程,宋银硕:04:00后
  *   --only <列表>     只写这几个人的记忆（默认 = present 里全部）
  *   --date YYYY-MM-DD 记忆日期（默认今天）
- *   --model <prov>/<id>  拆分用的模型（默认跟第一个在场角色的线下主模型）
+ *   --model <prov>/<id>  拆分用的模型（默认跟郑成灿的线下主模型）
  *   --run             真写盘（不带就是预演）
  *   --no-embed        不算向量（省一次请求，语义检索会漏这条）
  *
- * 幂等：同一份来源 + 同一个日期 + 同一个人，已经写过就跳过（看 keywords 里的
- * `pov:<来源指纹>` 标记）。要重写先自己删掉那条。
+ * 幂等（v2 共享模式）：同一份来源 + 同一个日期 + 同一个人，keywords 里有
+ * `cast:<来源指纹>` 就跳过；只缺几个人就只补那几个人，不重写已有的人。
+ * 要强制重写先自己删掉那几条。
  */
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 
-import { fileURLToPath } from "node:url";
-const HERE_DIR = path.dirname(fileURLToPath(import.meta.url)); // <Uranus>/patches
-const URANUS_ROOT = path.resolve(HERE_DIR, "..");
-const SERVER_SRC = path.join(URANUS_ROOT, "server", "src");
-const DATA = process.env.URANUS_DATA_DIR || path.join(URANUS_ROOT, "data");
+const SERVER_SRC = "/Users/zhiyuanpan/Uranus_Imessage/server/src";
+const DATA = "/Users/zhiyuanpan/Uranus_Imessage/data";
 
 const { loadConfig, resolveEndpoint } = await import(`${SERVER_SRC}/config.js`);
-const { chatCompletion, embedText } = await import(`${SERVER_SRC}/llm.js`);
+const { chatCompletion } = await import(`${SERVER_SRC}/llm.js`);
 const { appendMemory, readMemories, memoryKeyFor } = await import(`${SERVER_SRC}/memorystore.js`);
 
 /* ------------------------------------------------------------------ 参数 */
@@ -69,13 +68,14 @@ const NO_EMBED = has("--no-embed");
 const STORY = arg("--story");
 const FILE = arg("--file");
 const INLINE = arg("--text");
-const PRESENT_RAW = arg("--present", "");
+const PRESENT_RAW = arg("--present", "郑成灿,宋银硕,将太郎,李灿荣");
 const ONLY_RAW = arg("--only");
 const MODEL_ARG = arg("--model");
 const SINCE = arg("--since");
 const DIGEST_FILE = arg("--digest");
 const REFRESH = has("--refresh-digest");
 const FROM_SUMMARIES = has("--from-summaries");
+const SHARED = !has("--pov"); // v2 默认：一份全知总结原样写进所有在场者；--pov 退回 v1
 const LIMIT = Number(arg("--limit", "0")) || 0;
 const TURNS_FROM = Number(arg("--turns-from", "0")) || 0;
 
@@ -84,19 +84,27 @@ const DATE = arg("--date", today);
 
 /* ------------------------------------------------------------ 角色对照 */
 
-// 通用版：不写死任何角色名/称呼/声线。
-// 别名＝角色自己的名字（找 role 时也接受英文名/罗马字，由 config.roles 里的实际名字决定）；
-// 称呼与声线直接从该角色人设正文里让模型自己读（见 userPrompt），这里不再硬编码。
-const ALIAS = {}; // 需要别名时在角色卡里体现，脚本不做人名映射
-function callOf(role) { return role?.description ? "照他的人设原文里写的称呼" : "按他自己的习惯"; }
-function voiceOf(role) { return role?.description ? "照他的人设原文里写的说话方式" : "按他人设"; }
+const ALIAS = { 将太郎: ["将太郎", "Shotaro", "쇼타로"], 李灿荣: ["李灿荣", "Wonbin", "Anton"] };
+const CALL = {
+  郑成灿: "叫她「宝宝／애기야／우리애기」，正事叫「김지원」",
+  // 2026-11-10 改：日常 지원이；正事/生气 김지원；外人在场 김지원 씨；酒后失控 지원아；禁 지원 씨
+  宋银硕: "日常叫她「지원이」，正事或生气叫「김지원」，外人在场才「김지원 씨」，喝了酒才叫「지원아」；绝不叫「지원 씨」",
+  将太郎: "叫她「지원아」；他是日籍，回忆里偶尔会冒出日语词",
+  李灿荣: "叫她「누나」，公事叫「대표님」；她叫他「小狗／小老公」",
+};
+const VOICE = {
+  郑成灿: "长句绕圈子、生气时整段韩语、事后用中文认错；口头禅 ㅡㅡ（打字时才有，写进回忆要化成「哼」一声）",
+  宋银硕: "极简短句，两个字能说完不说三个；关心只说一次；冷幽默说完自己没表情；偶尔没头没尾",
+  将太郎: "说话带身体感（重心、拍子、手停在哪）；笑着把场子拉回来；中文里偶尔掉日语",
+  李灿荣: "紧张或说英文时冒俚语（no way／for real?／I'm so done）；会「汪」；撒娇能说很长一段",
+};
 
 const config = loadConfig();
-const roles = (config.roles ?? []).filter((r) => r.id !== "r-cast-stage"); /* castpatch:exclude-stage */
+const roles = (config.roles ?? []).filter((r) => r.id !== "r-group" && r.id !== "r-cast-stage"); /* castpatch:exclude-stage */
 
 function findRole(label) {
   const names = ALIAS[label] ?? [label];
-  return roles.find((r) => names.includes(r.name) || String(r.name).toLowerCase() === String(label).toLowerCase());
+  return roles.find((r) => names.includes(r.name));
 }
 
 const present = PRESENT_RAW.split(",")
@@ -141,7 +149,7 @@ function fromStory(id, since) {
     const stamp = ts
       ? ts.toLocaleString("sv-SE", { timeZone: "Asia/Seoul" }).slice(0, 16)
       : "";
-    const who = t.role === "user" ? (config?.userName || config?.user?.name || USER_NAME || "") : "";
+    const who = t.role === "user" ? "金智源" : "";
     lines.push(`[${stamp}]${who ? " " + who + "：" : "\n"}${body}`);
   }
   if (since && skipped) console.log(`· --since ${since}：跳过 ${skipped} 个更早的 turn`);
@@ -150,7 +158,7 @@ function fromStory(id, since) {
 
 /*
  * 小总结模式：线下每攒一段就写一条小总结（`story.summaries`），落盘时进的是
- * 群像自己的记忆库（`role-r-cast-stage`）。那个库只有一份集体记忆，各人的库里
+ * 群像自己的记忆库（`role-r-group`）。那个库只有一份集体记忆，四个人的库里
  * 什么都没有 —— 所以按人再扇一遍，用**小总结**当底稿：一条小总结 = 一段戏，
  * 每人每段一条 POV。比拿整部存档压一次纪要更细，也不会漏掉后半夜。
  */
@@ -213,7 +221,7 @@ function endpoint() {
     if (!ep) throw new Error(`模型 ${MODEL_ARG} 解析不出来（没启用 / 没配 url）`);
     return ep;
   }
-  const host = (present.map((p) => findRole(p.label)).find(Boolean)) ?? roles[0];
+  const host = roles.find((r) => r.name === "郑成灿") ?? roles[0];
   const ref = host?.offline?.model ?? host?.chatModel;
   const ep = resolveEndpoint(config, ref ?? {});
   if (!ep) throw new Error("默认模型解析不出来，用 --model prov-x/m-y 指定一个");
@@ -236,7 +244,7 @@ const DIGEST_SYSTEM = `你是群像剧情的时间线纪要压器。给你一段
 硬规矩：
 1. 按时间顺序，每条以「剧情内时间 + 地点」开头，例：22:40 顶层公寓客厅。
 2. 只写**发生了什么**：谁做了什么、说了哪句关键原话、伤口/身体/物品的状态变化、做出的决定、达成的约定。不写气氛、不写心理总结、不写比喻。
-3. 人名一个不许省，动作的主体写在最前面。
+3. 人名一个不许省（郑成灿／宋银硕／将太郎／李灿荣／金智源），动作的主体写在最前面。
 4. 谁不在场、谁中途离开、谁被蒙在鼓里 —— 明确写出来。
 5. 不许编：原文没有的不许补，拿不准的宁可不写。
 6. 输出纯条目，每条一行，信息密度要高，长度约为原文的十分之一。`;
@@ -309,7 +317,7 @@ async function buildDigest(seg) {
     return t;
   }
   if (seg.text.length <= 30000) return null;
-  const cache = path.join(os.tmpdir(), `uranus-digest-${seg.fingerprint}.md`);
+  const cache = `/tmp/uranus-digest-${seg.fingerprint}.md`;
   if (!REFRESH && fs.existsSync(cache)) {
     const t = fs.readFileSync(cache, "utf8");
     console.log(`· 复用已算好的纪要 ${cache}（${t.length} 字）`);
@@ -328,12 +336,26 @@ async function buildDigest(seg) {
 
 /* -------------------------------------------------------------- POV 提示 */
 
-const SYSTEM = `你是群像剧情的长记忆拆分器。
+const SYSTEM_SHARED = `你是群像剧情的长记忆整理员。
 
-给你一段多人同时在场的剧情，以及其中一个人的名字，你要写出**这个人自己的那段记忆** —— 事后回想起来的样子。
+给你一整天的剧情材料，你要写出**这一天从头到尾发生了什么**——一份给所有在场角色共用的记忆。群像默认全场细节共享：凡勾进本场的角色，这一天发生的事他都算在场知情，不再分"他看得见/看不见"。
 
 硬规矩：
-1. 第三人称过去时。**叙述主角一律直接写他自己的名字（就是下面【要写记忆的人】给的这个名字），全程不许出现叙述性的「我」**——记忆要按人名登记，混进群像时谁的就是谁的，不靠猜。只有引号里的直接引语（人物原话）可以保留「我」。用户本人写「她」即可。
+1. 第三人称过去时。**人名一律直接写本人的名字（郑成灿／宋银硕／将太郎／李灿荣），全程不许出现叙述性的「我」**——记忆按人名登记，混进群像时一眼能认。只有引号里的直接引语（人物原话）可以保留「我」。金智源写「她」即可。
+2. **全知、中性、不挑视角**：材料里发生的事全部写进来，不写"他只看见""她不知道""他后来才听说"这类限知句。谁做了什么、谁说了哪句、身体/物品状态如何变化，一律平铺直叙。
+3. 具体：时间、地点、动作、原话、状态。不写「气氛很紧张」这种概括，写「他把车钥匙放在玄关台面上，没抬眼」。韩语原话保留韩文，后面用括注带一句中文。
+4. 长度跟着材料走：材料事实充足时写 1600–2000 字、四到六段；**材料只覆盖一小段时间就写短（几百字也可以）——绝不为凑字数编造材料里没有的情节**。材料没写的清晨、白天、晚上一律当没发生；「从凌晨写到深夜」只在材料确实覆盖全天时才成立。不用小标题，不用总结句。
+5. 材料里以**计划、约定、对话**形式出现的事（比如「明天公证人上门」「暗房改到下午两点」），只能写成当时被提起、说好的话，**绝不能写成已经发生的事**。
+6. 只输出记忆正文。不要解释、不要前言、不要「以下是」。
+
+语言：简体中文。`;
+
+const SYSTEM = SHARED ? SYSTEM_SHARED : `你是群像剧情的长记忆拆分器。
+
+给你一段四个人同时在场的剧情，以及其中一个人的名字，你要写出**这个人自己的那段记忆** —— 事后回想起来的样子。
+
+硬规矩：
+1. 第三人称过去时。**叙述主角一律直接写他自己的名字（郑成灿／宋银硕／将太郎／李灿荣），全程不许出现叙述性的「我」**——记忆要按人名登记，混进群像时谁的就是谁的，不靠猜。只有引号里的直接引语（人物原话）可以保留「我」。金智源写「她」即可。
 2. **只写他亲眼看见、亲耳听见、亲身经历的。** 他不在场的时候发生的事、别人背着他做的决定、别人心里想的东西 —— 一个字都不许写。他只能从痕迹里推测（手背上的血痂、绷带、红肿的眼睛、桌上留下的发圈）。
 3. 用他本人的称呼和说话方式（会给你）。别人怎么叫他、他怎么叫别人，一个都不能串。
 4. 具体：时间、地点、动作、原话。不写「气氛很紧张」这种概括，写「他把车钥匙放在玄关台面上，没抬眼」。
@@ -343,6 +365,17 @@ const SYSTEM = `你是群像剧情的长记忆拆分器。
 
 语言：简体中文（人物说的韩语台词可以保留原样，后面用括注带一句中文）。`;
 
+function userPromptShared(seg) {
+  return `【日期】${seg.date}
+【这场戏在场的人】${present.map((p) => `${p.label}${p.note ? `（${p.note}）` : "（全程）"}`).join("、")}
+
+${seg.digest ? "下面是这一整天从头到尾的经过（按时间排的纪要）：" : "下面是这一整天的经过（凌晨到深夜）："}
+
+"""${seg.digest ?? seg.text.slice(0, 24000)}"""
+
+现在写这一天的一份共用记忆：全知、第三人称，从这一天最早写到最晚，把材料里发生的事都写清楚。不分视角、不写"他只知道"。`;
+}
+
 function userPrompt(seg, label, note) {
   const others = present
     .filter((p) => p.label !== label)
@@ -350,8 +383,8 @@ function userPrompt(seg, label, note) {
     .join("、");
 
   return `【要写记忆的人】${label}
-【他的称呼方式】${callOf(findRole(label))}
-【他的说话方式】${voiceOf(findRole(label))}
+【他的称呼方式】${CALL[label] ?? "按他自己的习惯"}
+【他的说话方式】${VOICE[label] ?? "按他人设"}
 【这场戏在场的人】${present.map((p) => `${p.label}${p.note ? `（${p.note}）` : "（全程）"}`).join("、")}
 【不在场或中途才到的人】${others || "无"}
 【日期】${seg.date}
@@ -360,36 +393,47 @@ ${seg.digest ? "下面是这一整天从头到尾的经过（按时间排的纪�
 
 """${seg.digest ?? seg.text.slice(0, 24000)}"""
 
-现在写 ${label} 在 ${seg.date} 这一天留下的一条记忆：按材料实际覆盖的时段写，只写他能知道的部分，材料没写到的时段不要编。中间他不在场的那几段时间，就写他从痕迹和转述里知道的，或者干脆跳过——不用硬填。`;
+现在写 ${label} 在 ${seg.date} 这一天留下的一条记忆：从凌晨一直写到深夜，只写他能知道的部分。中间他不在场的那几段时间，就写他从痕迹和转述里知道的，或者干脆跳过——不用硬填。`;
 }
 
 /* ---------------------------------------------------------------- 向量 */
 
-// 向量走玩家自己的配置：读 config.memories.memory.embedModel，用 Uranus 自带的
-// resolveEndpoint + embedText 调用。不写死任何 provider id / key / 接口地址，
-// 玩家用 OpenAI 兼容、Gemini 原生还是 Vertex 都能按他自己的设置工作。
-function embedRef() {
-  for (const section of ["memory", "memo"]) {
-    const ref = config?.memories?.[section]?.embedModel;
-    if (ref?.provider && ref?.modelId) return ref;
+function embedKey() {
+  try {
+    const cfg = JSON.parse(fs.readFileSync(path.join(DATA, "data.config.json"), "utf8"));
+    return (cfg.providerKeys?.["prov-2"] ?? []).find((k) => k) ?? "";
+  } catch {
+    return "";
   }
-  return null;
 }
 
 async function embed(text) {
   if (NO_EMBED) return null;
-  const ref = embedRef();
-  if (!ref) {
-    console.log("  ! 没有可用的向量模型，这条不带向量（可在记忆设置里选一个）");
+  const key = embedKey();
+  if (!key) {
+    console.log("  ! 没有 prov-2 的 key，这条不带向量");
     return null;
   }
   try {
-    const ep = resolveEndpoint(config, ref);
-    if (!ep) throw new Error("向量模型引用失效（服务商或模型被删/被关）");
-    const out = await embedText(ep, String(text).slice(0, 6000), { retries: 1 });
-    return Array.isArray(out) && out.length ? out : null;
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${key}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/gemini-embedding-001",
+          content: { role: "user", parts: [{ text }] },
+        }),
+        signal: AbortSignal.timeout(20000),
+      }
+    );
+    const j = await r.json();
+    const v = j?.embedding?.values;
+    if (Array.isArray(v) && v.length) return v;
+    console.log("  ! 向量返回异常：", JSON.stringify(j).slice(0, 120));
+    return null;
   } catch (e) {
-    console.log("  ! 向量请求失败：", String(e?.message ?? e).slice(0, 140));
+    console.log("  ! 向量请求失败：", e?.message ?? e);
     return null;
   }
 }
@@ -400,6 +444,7 @@ console.log("=".repeat(12) + " 群像记忆扇出 " + "=".repeat(26));
 console.log(`来源：${segments.length} 段 — ${segments.map((s) => s.title).join(" ｜ ")}`);
 console.log(`模型：${ep.label}　${FROM_SUMMARIES ? "底稿：小总结（群像库里那份）" : "底稿：剧情原文"}`);
 console.log(`在场：${present.map((p) => p.label + (p.note ? `(${p.note})` : "")).join("、")}`);
+console.log(SHARED ? "模式：v2 共享 —— 一天生成一次，原样写进每个在场角色库" : "模式：v1 限知 POV（--pov）—— 每人各写一份");
 console.log(RUN ? "模式：**真写盘**" : "模式：预演（加 --run 才写）");
 console.log("");
 
@@ -418,6 +463,80 @@ for (const [si, seg] of segments.entries()) {
       (seg.digest ? ` → 纪要 ${seg.digest.length} 字` : "")
   );
 
+  /* ---------- v2 共享：生成一次，原样写进每个在场角色 ---------- */
+  if (SHARED) {
+    // 先算哪些人还缺这条（按 cast: 指纹，不认 pov:）
+    const missing = [];
+    for (const who of targets) {
+      const role = findRole(who.label);
+      if (!role) {
+        console.log(`✗ ${who.label}：config.roles 里找不到这个角色，跳过`);
+        continue;
+      }
+      const key = memoryKeyFor(role);
+      const existing = readMemories(key);
+      const dup = existing.find((m) =>
+        Array.isArray(m?.keywords) && m.keywords.some((k) => String(k).startsWith(`cast:${seg.fingerprint}`))
+      );
+      if (dup) {
+        console.log(`· ${who.label}：已有 cast 共享记忆（${dup.id}，${dup.date}），跳过`);
+        continue;
+      }
+      missing.push({ who, role, key });
+    }
+    if (!missing.length) {
+      console.log("· 所有在场角色都已有这条共享记忆，本段不生成");
+      continue;
+    }
+
+    process.stdout.write(`→ 共用记忆生成中（将写入 ${missing.map((m) => m.who.label).join("、")}）… `);
+    let text = "";
+    try {
+      text = await chatCompletion(
+        ep,
+        [
+          { role: "system", content: SYSTEM },
+          { role: "user", content: userPromptShared(seg) },
+        ],
+        { temperature: 0.5 }
+      );
+    } catch (e) {
+      console.log("失败：" + (e?.message ?? e));
+      continue;
+    }
+    text = String(text ?? "").trim();
+    if (!text) {
+      console.log("空回，跳过");
+      continue;
+    }
+    text = text.replace(/^(以下是|这是|【?记忆】?[:：]?\s*)/, "").trim();
+    console.log(`${text.length} 字`);
+
+    const emb = await embed(text);
+    for (const { who, role, key } of missing) {
+      const keywords = [
+        "群像",
+        who.label,
+        "cast",
+        `cast:${seg.fingerprint}`,
+        seg.date,
+        ...(emb ? [] : ["无向量"]),
+      ];
+      results.push({
+        who: who.label,
+        key,
+        roleId: role.id,
+        content: text,
+        embedding: emb,
+        keywords,
+        date: seg.date,
+        segment: seg.title,
+      });
+    }
+    continue;
+  }
+
+  /* ---------- v1 限知 POV（--pov 保留） ---------- */
   for (const who of targets) {
     const role = findRole(who.label);
     if (!role) {
@@ -426,7 +545,6 @@ for (const [si, seg] of segments.entries()) {
     }
     const key = memoryKeyFor(role);
 
-    // 幂等：同一段 + 同一个人，写过就跳过
     const existing = readMemories(key);
     const dup = existing.find(
       (m) => (m.keywords ?? []).includes(`pov:${seg.fingerprint}`) && m.keywords.includes(who.label)
@@ -456,7 +574,6 @@ for (const [si, seg] of segments.entries()) {
       console.log("空回，跳过");
       continue;
     }
-    // 偶尔会带上「以下是」之类的头，切掉
     text = text.replace(/^(以下是|这是|【?记忆】?[:：]?\s*)/, "").trim();
     console.log(`${text.length} 字`);
 

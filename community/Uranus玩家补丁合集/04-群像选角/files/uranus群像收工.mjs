@@ -1,22 +1,28 @@
 #!/usr/bin/env node
 /**
- * 群像收工：剧情结束后自动补「群像库大总结 + 在场者 POV」。
+ * ⭐ [补丁㊿-ter] 群像收工：剧情结束后自动补「群像库大总结 + 在场者共享记忆」。
  *
- * 背景：endOffline 的按天合并只写群像库（「线下合并:<日期>」），各人
- * 各自的库和大总结从来没人写 —— 以前靠收工后手动跑扇出脚本，YYYY-MM-DD 就
+ * v2（2026-11-23）：角色记忆从「每人限知 POV」改为「一天一份全知总结，原样
+ * 写进在场每个角色的库」。幂等也按剧情指纹 cast: 判，不再按日期 + 任意 pov:
+ * —— 旧写法会让同日另一场戏的 POV 误挡本场（11-22 剧情1 就是这么丢的）。
+ *
+ * 背景：endOffline 的按天合并只写 role-r-group（「线下合并:<日期>」），四人
+ * 各自的库和大总结从来没人写 —— 以前靠收工后手动跑扇出脚本，2026-11-11 就
  * 因此漏了 11-10 一整天。现在由 offline.js 的 endOffline 在落库完毕后 spawn
  * 本脚本（detached 后台），把最后一步补上。
  *
  * 用法：
- *   node 群像收工.mjs --story st-xxxx            # 处理该剧情覆盖的每一天
+ *   node uranus群像收工.mjs --story st-xxxx            # 处理该剧情覆盖的每一天
  *   node uranus群像收工.mjs --story st-aaaa,st-bbbb    # 多场戏同天合并收（11-12 补）
- *   node uranus群像收工.mjs --story st-xxxx --only-day YYYY-MM-DD
- *   可选 --model <prov>/<id>（默认取第一个在场角色的线下模型；空回多就换一个稳定的模型）
+ *   node uranus群像收工.mjs --story st-xxxx --only-day 2026-11-10
+ *   可选 --model <prov>/<id>（默认 prov-6/m-6 织云 deepseek-v4-flash；2026-11-16 起替换 V金，
+ *    原因：gemini-3.8-flash 在完整 POV 提示词下对宋银硕稳定空回、5 连败，织云实测四人全出稿零空回）
  *
  * 幂等（重复跑安全）：
- *   - 大总结：群像库 keywords 里有「大总结:<日期>」就跳过；
- *   - POV：各自的库都有该日期的 pov 条目就跳过；只写了一部分时重跑，
- *     扇出脚本自己按 pov:<指纹> 逐人去重（素材文件名固定 → 指纹稳定）。
+ *   - 大总结：群像库 keywords 里有「大总结指纹:<剧情>-<日期>.md-<长度>」且长度够就跳过；
+ *   - 共享记忆：在场每个角色的库都有「cast:<剧情>-<日期>.md-<长度>」且长度够才跳过；
+ *     只写了一部分时重跑，扇出脚本按 cast:<指纹> 逐人补缺，不重写已有的人。
+ *     pov: 老条目一律不算数（这正是 11-22 误判的根因）。
  *   - 并发：/tmp/uranus-closeout/.lock-<剧情hash> 互斥；点两次结束也只跑一份。
  *
  * 失败策略：模型连吃 3 次失败只记日志不重试烧钱；任何一步失败不影响其余天。
@@ -24,7 +30,6 @@
  */
 
 import fs from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -34,7 +39,7 @@ const ROOT = path.resolve(HERE, "..");                     // ~/Uranus_Imessage
 const DATA = process.env.URANUS_DATA_DIR || path.join(ROOT, "data");
 const SERVER_SRC = path.join(ROOT, "server", "src");
 const FANOUT = path.join(HERE, "uranus群像记忆扇出.mjs");
-const MATERIAL_DIR = path.join(os.tmpdir(), "uranus-closeout"); // Windows 上没有 /tmp
+const MATERIAL_DIR = "/tmp/uranus-closeout";
 
 // —— 参数 ——
 const argv = process.argv.slice(2);
@@ -44,7 +49,7 @@ const arg = (k, dflt = "") => {
 };
 const STORIES = arg("--story").split(",").map((s) => s.trim()).filter(Boolean);
 const ONLY_DAY = arg("--only-day");
-const MODEL = arg("--model", ""); // 不给就从第一个在场角色的线下模型取
+const MODEL = arg("--model", "prov-6/m-6");
 
 if (!STORIES.length) {
   console.error("缺 --story <id>[,<id2>…]");
@@ -98,19 +103,16 @@ for (const sig of ["SIGTERM", "SIGINT"]) {
 }
 
 // 四个单人库的 memory key（写死：卡上字段会被控制台整包保存抹掉，这里不放卡上）
-// 通用版：群像里的候选角色＝除舞台卡外的所有人，key 用服务端同款算法现算（不写死）
-const memoryKeyForLocal = (r) => {
-  const n = String(r?.name ?? "").replace(/[^A-Za-z0-9]/g, "");
-  return n || `role-${String(r?.id ?? "").replace(/[^A-Za-z0-9_-]/g, "")}`;
-};
-const ALL_ROLES_INIT = (loadConfig().roles ?? []);
-const ROLE_KEYS = {}; // name -> memoryKey
-for (const r of ALL_ROLES_INIT) {
-  if (r?.id === "r-cast-stage" || !r?.name) continue;
-  ROLE_KEYS[r.name] = memoryKeyForLocal(r);
-}
-const FOUR_KEYS = ROLE_KEYS; // 兼容下文变量名（现在是"所有在场角色"）
-const GROUP_KEY = "role-r-cast-stage"; // 群像集体记忆库 key，与舞台卡 id 对应（通用约定）
+// 不写死任何角色 id：四个单人库的 key 从角色卡现算。
+// 舞台卡被排除；其余按 name 对应。旧存档若某名字找不到，跳过不写。
+const { memoryKeyFor: packMemKey } = await import(`file://${path.join(SERVER_SRC, "memorystore.js")}`);
+const PACK_ROLES = (loadConfig().roles ?? []).filter(
+  (r) => r.id !== "r-group" && r.id !== "r-cast-stage"
+);
+const FOUR_KEYS = Object.fromEntries(
+  PACK_ROLES.map((r) => [r.name, packMemKey(r)])
+);
+const GROUP_KEY = "role-r-group";
 
 // 首尔时区日期（扇出脚本同口径；存档里的 ts 是 UTC）
 const SEOUL_MS = 9 * 3600 * 1000;
@@ -121,7 +123,7 @@ const seoulDate = (ts) => {
 
 // —— 服务端模块 ——
 const { loadConfig, resolveEndpoint } = await import(`file://${path.join(SERVER_SRC, "config.js")}`);
-const { chatCompletion, embedText } = await import(`file://${path.join(SERVER_SRC, "llm.js")}`);
+const { chatCompletion } = await import(`file://${path.join(SERVER_SRC, "llm.js")}`);
 const { readMemories, appendMemory } = await import(`file://${path.join(SERVER_SRC, "memorystore.js")}`);
 
 // —— 读存档（可多场）——
@@ -135,20 +137,20 @@ const loaded = STORIES.map((sid) => {
 });
 
 /* castpatch:present-from-cast */
-// [群像选角] 从每场戏的 castRoleIds 反查在场者姓名（并集）；无字段的老戏 = 全部候选角色
+// [群像选角] 从每场戏的 castRoleIds 反查在场者姓名（并集）；无字段的老戏 = 四人全在
 const CAST_IDS = new Set();
 for (const { story } of loaded) {
   if (Array.isArray(story?.castRoleIds) && story.castRoleIds.length) {
     story.castRoleIds.forEach((id) => CAST_IDS.add(String(id)));
   }
 }
-const ALL_ROLES = ALL_ROLES_INIT;
+const ALL_ROLES = (loadConfig().roles ?? []);
 const presentNames = CAST_IDS.size
   ? Object.keys(FOUR_KEYS).filter((nm) => {
       const r = ALL_ROLES.find((x) => x.name === nm);
       return r && CAST_IDS.has(String(r.id));
     })
-  : Object.keys(FOUR_KEYS); // 老剧情兜底：全部候选角色都算在场
+  : Object.keys(FOUR_KEYS); // 老剧情兜底：四人全在
 log(`[群像选角] 本场在场：${presentNames.join("、") || "（无）"}`);
 
 // —— 按天归材料：small 优先（大总结/big 不进材料，跟 endOffline 同一规矩）——
@@ -187,24 +189,29 @@ if (!ep) {
   process.exit(2);
 }
 
-// —— 向量：走玩家自己的配置（记忆设置里的向量模型 + resolveEndpoint + embedText）——
-// 不写死任何 provider id / key / 接口地址，换一台机器也按其自身配置工作。
-function embedRef() {
-  for (const section of ["memory", "memo"]) {
-    const ref = config?.memories?.[section]?.embedModel;
-    if (ref?.provider && ref?.modelId) return ref;
-  }
-  return null;
-}
+// —— 向量密钥（prov-2 = Google 官方，gemini-embedding-001）——
+let embedKey = "";
+try {
+  const dc = JSON.parse(fs.readFileSync(path.join(DATA, "data.config.json"), "utf8"));
+  embedKey = (dc.providerKeys?.["prov-2"] ?? []).find(Boolean) ?? "";
+} catch {}
 
 async function embed(text) {
-  const ref = embedRef();
-  if (!ref) return null;
+  if (!embedKey) return null;
   try {
-    const ep = resolveEndpoint(config, ref);
-    if (!ep) return null;
-    const out = await embedText(ep, String(text).slice(0, 6000), { retries: 1 });
-    return Array.isArray(out) && out.length ? out : null;
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${embedKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/gemini-embedding-001",
+          content: { parts: [{ text: String(text).slice(0, 6000) }] },
+        }),
+      }
+    );
+    const j = await r.json();
+    return j?.embedding?.values ?? null;
   } catch {
     return null;
   }
@@ -224,8 +231,8 @@ async function callModel(messages, tries = 3) {
 }
 
 const groupMems = () => readMemories(GROUP_KEY);
-// 指纹 = 首个剧情id-日期.md-材料长度。只认本次收工口径（pov:<STORIES[0]>-<day>.md-<len>）的指纹做长度比对：
-// 材料比上次收工长了=有新剧情没收，要补；更短或同长=已收过。旧口径/手工写的 POV（别的指纹）一律视为已收，绝不重生成。
+// 指纹 = 首个剧情id-日期.md-材料长度。v2 认 cast: 口径；材料比上次长了=有新剧情没收，要补。
+// 同长或更短=已收过。pov: 老条目不再算数（11-22 因为同日别的戏写字数更短被误判已收）。
 const fpOf = (day, textLen) => `${STORIES[0]}-${day}.md-${textLen}`;
 const kwLen = (kw, prefix) => {
   const s = String(kw);
@@ -244,22 +251,18 @@ const hasDaz = (day, textLen) => {
   if (!own.length) return true; // 只有旧式/手工条目 → 已收
   return own.some((k) => kwLen(k, "大总结指纹:") >= textLen);
 };
-const povDone = (day, textLen) => {
-  const stem = `pov:${STORIES[0]}-${day}.md-`;
+// v2：只认本剧情本日期的 cast: 指纹，且长度够；pov: 老条目一律不算（修 11-22 误判）
+const castDone = (day, textLen) => {
+  const stem = `cast:${STORIES[0]}-${day}.md-`;
   for (const nm of presentNames) { /* castpatch:pov-present */
     const key = FOUR_KEYS[nm];
-    const hits = readMemories(key).filter(
-      (m) =>
-        m?.date === day &&
-        Array.isArray(m?.keywords) &&
-        m.keywords.some((k) => String(k).startsWith("pov:"))
+    const lens = readMemories(key).flatMap((m) =>
+      Array.isArray(m?.keywords)
+        ? m.keywords.filter((k) => String(k).startsWith(stem)).map((k) => kwLen(k, "cast:"))
+        : []
     );
-    if (!hits.length) return false;
-    const lens = hits.flatMap((m) =>
-      m.keywords.filter((k) => String(k).startsWith(stem)).map((k) => kwLen(k, "pov:"))
-    );
-    if (!lens.length) continue; // 该库的 POV 是旧口径/手工写的 → 视为已收
-    if (Math.max(...lens) < textLen) return false; // 本次材料更长 → 有新剧情没收
+    if (!lens.length) return false; // 这个在场角色没有本剧情的共享记忆 → 没收完
+    if (Math.max(...lens) < textLen) return false; // 材料变长了 → 有新剧情没记
   }
   return true;
 };
@@ -276,7 +279,7 @@ for (const { day, text } of days) {
     details.push(`${day} 大总结已有`);
   } else {
     const sys = `你是剧情记忆整理员。把给出的剧情材料压缩成一条「大总结」记忆，要求：
-1. 第三人称时间线叙事，按时间顺序；主角一律写本名（就写在下面材料里出现的人名），叙述里禁止出现「我」（引号内的原话除外）。
+1. 第三人称时间线叙事，按时间顺序；主角一律写本名（郑成灿/宋银硕/将太郎/李灿荣/金智源），叙述里禁止出现「我」（引号内的原话除外）。
 2. 只准使用材料里出现的信息：时间、地点、事件、情绪、原话都以材料为准，禁止补写材料里没有的情节、对话或心理描写；材料没提的就略过。
 3. 长度不超过材料字数，目标 1500-2000 个汉字。只输出正文，不要标题、不要解释。`;
     let content = await callModel([
@@ -305,7 +308,7 @@ for (const { day, text } of days) {
       const item = appendMemory(GROUP_KEY, {
         date: day,
         content,
-        keywords: ["群像", "大总结", `大总结:${day}`, `大总结指纹:${fpOf(day, text.length)}`, ...STORIES],
+        keywords: ["群像", "四人", "大总结", `大总结:${day}`, `大总结指纹:${fpOf(day, text.length)}`, ...STORIES],
         embedding,
       });
       log(`  ✓ 大总结：${content.length} 字，向量 ${embedding ? embedding.length + " 维" : "无"} → ${item?.id ?? "写入失败"}`);
@@ -314,29 +317,29 @@ for (const { day, text } of days) {
     }
   }
 
-  // ② 在场者 POV（扇出脚本自带逐人幂等）
-  if (povDone(day, text.length)) {
-    log(`  在场者POV：四库都已有，跳过`);
-    details.push(`${day} 在场者POV已有`);
+  // ② 在场者共享记忆（v2：一天一份全知总结原样写进每个在场角色库）
+  if (castDone(day, text.length)) {
+    log(`  共享记忆：在场各库都已有，跳过`);
+    details.push(`${day} 共享记忆已有`);
     continue;
   }
-  // 文件名固定 = 扇出指纹稳定（pov:<文件名>-<长度>），部分失败重跑不会写重
+  // 文件名固定 = 扇出指纹稳定（cast:<文件名>-<长度>），部分失败重跑只补缺的人
   const matFile = path.join(MATERIAL_DIR, `${STORIES[0]}-${day}.md`);
   fs.writeFileSync(matFile, text);
-  log(`  在场者POV：跑扇出（素材 ${matFile}）…`);
+  log(`  共享记忆：跑扇出（素材 ${matFile}，在场 ${presentNames.join("、")}）…`);
   const r = spawnSync(process.execPath, [FANOUT, "--file", matFile, "--date", day, "--run", "--model", MODEL,
     "--present", presentNames.join(",")], { /* castpatch:fanout-present */
     stdio: "inherit",
     timeout: 30 * 60 * 1000,
   });
-  // 扇出退出码不可信（全失败也返回 0）：以四库实查为准
-  if (povDone(day, text.length)) {
-    details.push(`${day} 在场者POV入库`);
-    log(`  ✓ 在场者POV已入库（实查四库确认）`);
+  // 扇出退出码不可信（全失败也返回 0）：以在场各库实查为准
+  if (castDone(day, text.length)) {
+    details.push(`${day} 共享记忆入库`);
+    log(`  ✓ 共享记忆已入库（实查在场各库确认）`);
   } else {
     log(`  ✗ 扇出没写全（退出码 ${r.status ?? "超时/信号"}），详情见上方输出`);
     failed++;
-    details.push(`${day} 在场者POV失败`);
+    details.push(`${day} 共享记忆失败`);
   }
 }
 
