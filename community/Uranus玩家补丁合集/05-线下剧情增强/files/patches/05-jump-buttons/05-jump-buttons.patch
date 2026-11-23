@@ -62,7 +62,7 @@
      /* 让那一条回到补之前的位置：现在的距离 − 补之前的距离，就是要补的滚动量 */
      const now = at.mark.getBoundingClientRect().top - at.box.getBoundingClientRect().top;
      at.box.scrollTop += now - at.offset;
-@@ -2088,6 +2115,54 @@
+@@ -2088,6 +2115,73 @@
      });
      if (r?.ok) setNote("手写的那份存好了。");
    }
@@ -92,8 +92,13 @@
 +   * Kelivo 同款：单箭头在「你说的话」之间跳。
 +   * 滚动容器同 jumpEdge；定位标记是每条消息外层那个 data-turn-user。
 +   * 往上 = 视口顶之上最后一个用户发言（没有就停在第一条）；
-+   * 往下 = 视口顶之下第一个（没有就走回底）。
-+   * 用 block:"center" 是因为壳子顶上有悬停的标题栏，"start" 会钻到它底下。
++   * 往下 = 视口顶之下第一个（没有就往下翻一屏）。
++   *
++   * 🔴 以前这里用 `target.scrollIntoView({behavior:"smooth"})`，和 ⏫⏬ 两个按钮
++   * 用的 `box.scrollTo` 不是一条路。在这套壳子里那条路不顶用（⏫⏬ 一直好使、
++   * 就它俩不动），而且 smooth 还会被「补更早」的锚回写 scrollTop 打断。现在
++   * 统一成 `box.scrollTo`：自己算目标相对滚动容器的位置，即时滚过去，和
++   * jumpEdge 完全同一条路。
 +   */
 +  const jumpUser = useCallback(
 +    (dir) => {
@@ -101,23 +106,37 @@
 +      if (!box) return;
 +      const nodes = Array.from(box.querySelectorAll("[data-turn-user]"));
 +      if (!nodes.length) return;
-+      const boxTop = box.getBoundingClientRect().top;
++      const boxRect = box.getBoundingClientRect();
++      /* 节点在「滚动内容」里的绝对位置 = 视口位置 - 容器视口位置 + 已滚过的量 */
++      const contentTop = (el) => el.getBoundingClientRect().top - boxRect.top + box.scrollTop;
++      /* 目标放在视口上三分处：壳子顶上有悬停标题栏，别贴着顶钻进去 */
++      const aim = (el) => Math.max(0, contentTop(el) - box.clientHeight / 3);
 +      if (dir < 0) {
-+        const above = nodes.filter((n) => n.getBoundingClientRect().top < boxTop - 8);
++        /* 往上：找**视口顶之上**那条（已经滚出去的），取离得最近的一条 */
++        const above = nodes.filter((n) => n.getBoundingClientRect().bottom < boxRect.top - 8);
 +        const target = above.length ? above[above.length - 1] : nodes[0];
-+        target.scrollIntoView({ block: "center", behavior: "smooth" });
++        box.scrollTo({ top: aim(target), behavior: "auto" });
 +      } else {
-+        const next = nodes.find((n) => n.getBoundingClientRect().top > boxTop + 8);
-+        if (next) next.scrollIntoView({ block: "center", behavior: "smooth" });
-+        else jumpEdge("bottom");
++        /*
++         * 🔴 往下必须拿「视口底」当参照：找屏幕下方**还没看到**的那条。
++         * 以前用的 `top > boxTop + 8` 是「视口顶之下」，把当前屏幕里已经能看见
++         * 的那条也算进去了 —— 滚过去几乎不动，再点还是它，于是永远卡在第一条。
++         */
++        const below = nodes.filter((n) => n.getBoundingClientRect().top > boxRect.bottom + 8);
++        if (below.length) {
++          box.scrollTo({ top: aim(below[0]), behavior: "auto" });
++        } else {
++          /* 下面没有你的发言了：往下翻一屏 */
++          box.scrollTo({ top: box.scrollTop + box.clientHeight * 0.9, behavior: "auto" });
++        }
 +      }
 +    },
-+    [jumpEdge]
++    []
 +  );
  
    const gateOff = row ? !row.gate : false;
    const summaries = story?.summaries ?? [];
-@@ -2321,6 +2396,7 @@
+@@ -2321,6 +2415,7 @@
                    {visible.map((t, i) => (
                      <div
                        key={t.id}
@@ -125,7 +144,7 @@
                        /* 补更早那批之前，把这一条的位置记下来当锚点 */
                        ref={i === 0 ? (el) => { if (el) anchor.current = el; } : undefined}
                        className="grid grid-cols-1 gap-3"
-@@ -2389,6 +2465,48 @@
+@@ -2389,6 +2484,48 @@
                        )}
                      </div>
                    ))}

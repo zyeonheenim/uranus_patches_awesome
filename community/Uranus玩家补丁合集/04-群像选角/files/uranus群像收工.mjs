@@ -4,7 +4,7 @@
  *
  * v2（2026-11-23）：角色记忆从「每人限知 POV」改为「一天一份全知总结，原样
  * 写进在场每个角色的库」。幂等也按剧情指纹 cast: 判，不再按日期 + 任意 pov:
- * —— 旧写法会让同日另一场戏的 POV 误挡本场（11-22 剧情1 就是这么丢的）。
+ * —— 旧写法会让同日另一场戏的 POV 误挡本场（同一天另一场戏写过的旧条目会把本场误判成已收）。
  *
  * 背景：endOffline 的按天合并只写 role-r-group（「线下合并:<日期>」），各角色
  * 各自的库和大总结从来没人写 —— 以前靠收工后手动跑扇出脚本，2026-11-11 就
@@ -22,7 +22,7 @@
  *   - 大总结：群像库 keywords 里有「大总结指纹:<剧情>-<日期>.md-<长度>」且长度够就跳过；
  *   - 共享记忆：在场每个角色的库都有「cast:<剧情>-<日期>.md-<长度>」且长度够才跳过；
  *     只写了一部分时重跑，扇出脚本按 cast:<指纹> 逐人补缺，不重写已有的人。
- *     pov: 老条目一律不算数（这正是 11-22 误判的根因）。
+ *     pov: 老条目一律不算数（这正是旧版误判的根因）。
  *   - 并发：/tmp/uranus-closeout/.lock-<剧情hash> 互斥；点两次结束也只跑一份。
  *
  * 失败策略：模型连吃 3 次失败只记日志不重试烧钱；任何一步失败不影响其余天。
@@ -231,7 +231,7 @@ async function callModel(messages, tries = 3) {
 
 const groupMems = () => readMemories(GROUP_KEY);
 // 指纹 = 首个剧情id-日期.md-材料长度。v2 认 cast: 口径；材料比上次长了=有新剧情没收，要补。
-// 同长或更短=已收过。pov: 老条目不再算数（11-22 因为同日别的戏写字数更短被误判已收）。
+// 同长或更短=已收过。pov: 老条目不再算数（同日别的戏写过、字数更短时会误判已收）。
 const fpOf = (day, textLen) => `${STORIES[0]}-${day}.md-${textLen}`;
 const kwLen = (kw, prefix) => {
   const s = String(kw);
@@ -250,7 +250,7 @@ const hasDaz = (day, textLen) => {
   if (!own.length) return true; // 只有旧式/手工条目 → 已收
   return own.some((k) => kwLen(k, "大总结指纹:") >= textLen);
 };
-// v2：只认本剧情本日期的 cast: 指纹，且长度够；pov: 老条目一律不算（修 11-22 误判）
+// v2：只认本剧情本日期的 cast: 指纹，且长度够；pov: 老条目一律不算（修旧版误判）
 const castDone = (day, textLen) => {
   const stem = `cast:${STORIES[0]}-${day}.md-`;
   for (const nm of presentNames) { /* castpatch:pov-present */
