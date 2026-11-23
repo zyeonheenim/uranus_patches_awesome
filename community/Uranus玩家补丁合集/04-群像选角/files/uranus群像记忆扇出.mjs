@@ -7,7 +7,7 @@
  * 每个在场者的库。生成只有一次，写入有 N 次；没出场的角色一个字都不写。
  *
  * 幂等按剧情指纹 `cast:<来源>-<日期>.md-<字数>`，不再按日期 + 任意 pov: 条目
- * 判定——后者会让同日另一场戏的 POV 误挡本场，11-22 就是这么丢的。
+ * 判定——后者会让同日另一场戏的 POV 误挡本场，同日另一场戏的旧条目就是这么误挡本场的。
  *
  * 加 --pov 可退回 v1 逐人限知模式（调试用，不推荐）。
  *
@@ -20,10 +20,10 @@
  *   node uranus群像记忆扇出.mjs --file /tmp/剧情.md --present 角色A,角色B --run
  *
  *   # 直接从线下存档扇出（turns 自动拼成文本，thinking/status 自动剥掉）
- *   node uranus群像记忆扇出.mjs --story st-mw1y0z0x-1 --present 角色A,角色B --run
+ *   node uranus群像记忆扇出.mjs --story st-你的剧情id-1 --present 角色A,角色B --run
  *
  *   # 只扇出某一天（同一个存档演了好几天时用这个）
- *   node uranus群像记忆扇出.mjs --story st-mw7v4kxm-3 --since 2026-11-09 --present ... --run
+ *   node uranus群像记忆扇出.mjs --story st-你的剧情id-1 --since 2026-11-09 --present ... --run
  *
  * 参数：
  *   --story <id>      读 data/offline/stories/<id>.json
