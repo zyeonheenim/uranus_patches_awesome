@@ -6,7 +6,7 @@
  * 写进在场每个角色的库」。幂等也按剧情指纹 cast: 判，不再按日期 + 任意 pov:
  * —— 旧写法会让同日另一场戏的 POV 误挡本场（11-22 剧情1 就是这么丢的）。
  *
- * 背景：endOffline 的按天合并只写 role-r-group（「线下合并:<日期>」），四人
+ * 背景：endOffline 的按天合并只写 role-r-group（「线下合并:<日期>」），各角色
  * 各自的库和大总结从来没人写 —— 以前靠收工后手动跑扇出脚本，2026-11-11 就
  * 因此漏了 11-10 一整天。现在由 offline.js 的 endOffline 在落库完毕后 spawn
  * 本脚本（detached 后台），把最后一步补上。
@@ -102,8 +102,7 @@ for (const sig of ["SIGTERM", "SIGINT"]) {
   try { process.on(sig, () => process.exit(143)); } catch {}
 }
 
-// 四个单人库的 memory key（写死：卡上字段会被控制台整包保存抹掉，这里不放卡上）
-// 不写死任何角色 id：四个单人库的 key 从角色卡现算。
+// 各单人库的 memory key：不写死任何角色 id，从角色卡现算。
 // 舞台卡被排除；其余按 name 对应。旧存档若某名字找不到，跳过不写。
 const { memoryKeyFor: packMemKey } = await import(`file://${path.join(SERVER_SRC, "memorystore.js")}`);
 const PACK_ROLES = (loadConfig().roles ?? []).filter(
@@ -137,7 +136,7 @@ const loaded = STORIES.map((sid) => {
 });
 
 /* castpatch:present-from-cast */
-// [群像选角] 从每场戏的 castRoleIds 反查在场者姓名（并集）；无字段的老戏 = 四人全在
+// [群像选角] 从每场戏的 castRoleIds 反查在场者姓名（并集）；无字段的老戏 = 全员都在
 const CAST_IDS = new Set();
 for (const { story } of loaded) {
   if (Array.isArray(story?.castRoleIds) && story.castRoleIds.length) {
@@ -150,7 +149,7 @@ const presentNames = CAST_IDS.size
       const r = ALL_ROLES.find((x) => x.name === nm);
       return r && CAST_IDS.has(String(r.id));
     })
-  : Object.keys(FOUR_KEYS); // 老剧情兜底：四人全在
+  : Object.keys(FOUR_KEYS); // 老剧情兜底：全员都在
 log(`[群像选角] 本场在场：${presentNames.join("、") || "（无）"}`);
 
 // —— 按天归材料：small 优先（大总结/big 不进材料，跟 endOffline 同一规矩）——
@@ -308,7 +307,7 @@ for (const { day, text } of days) {
       const item = appendMemory(GROUP_KEY, {
         date: day,
         content,
-        keywords: ["群像", "四人", "大总结", `大总结:${day}`, `大总结指纹:${fpOf(day, text.length)}`, ...STORIES],
+        keywords: ["群像", "大总结", `大总结:${day}`, `大总结指纹:${fpOf(day, text.length)}`, ...STORIES],
         embedding,
       });
       log(`  ✓ 大总结：${content.length} 字，向量 ${embedding ? embedding.length + " 维" : "无"} → ${item?.id ?? "写入失败"}`);
