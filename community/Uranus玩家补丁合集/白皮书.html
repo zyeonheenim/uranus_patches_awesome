@@ -769,21 +769,21 @@
       <line x1="150" y1="320" x2="150" y2="344" stroke="#b9b4aa" stroke-width="2" marker-end="url(#ar)"/>
       <rect x="24" y="350" width="250" height="86" rx="11" fill="#eeeefc" stroke="#5b5bd6"/>
       <text x="42" y="374" font-size="12.5" font-weight="700" fill="#5b5bd6">群像库 · 1 条大总结</text>
-      <text x="42" y="396" font-size="11" fill="#33336a">这一场戏整体发生了什么</text>
-      <text x="42" y="418" font-size="11" fill="#33336a">≈2000 字 · 按当天合并</text>
+      <text x="42" y="396" font-size="11" fill="#33336a">这一天整体发生了什么</text>
+      <text x="42" y="418" font-size="11" fill="#33336a">≈2000 字 · 按自然日合并</text>
 
       <rect x="314" y="350" width="250" height="86" rx="11" fill="#e7f4ec" stroke="#2f855a"/>
-      <text x="332" y="374" font-size="12.5" font-weight="700" fill="#2f855a">在场者各 1 条 POV</text>
-      <text x="332" y="396" font-size="11" fill="#3c5a47">角色 A 的视角、角色 B 的视角</text>
-      <text x="332" y="418" font-size="11" fill="#3c5a47">写进各自的角色库 · 按人合并</text>
+      <text x="332" y="374" font-size="12.5" font-weight="700" fill="#2f855a">在场者各 1 条共享记忆</text>
+      <text x="332" y="396" font-size="11" fill="#3c5a47">同一份全知总结，原样写进每个在场者库</text>
+      <text x="332" y="418" font-size="11" fill="#3c5a47">全场细节共享 · 角色 A 和 B 内容逐字相同</text>
 
       <rect x="604" y="350" width="252" height="86" rx="11" fill="#faf9f6" stroke="#e3dfd7"/>
       <text x="622" y="374" font-size="12.5" font-weight="700" fill="#5d5952">幂等 · 不会重复</text>
-      <text x="622" y="396" font-size="11" fill="#8b867d">同一天重跑不产生重复记忆</text>
-      <text x="622" y="418" font-size="11" fill="#8b867d">没出场的角色跳过</text>
+      <text x="622" y="396" font-size="11" fill="#8b867d">按「剧情+日期+字数」指纹判重</text>
+      <text x="622" y="418" font-size="11" fill="#8b867d">没出场的角色一个字都不写</text>
     </g>
   </svg>
-  <div class="fig-cap">勾选出场 → 现场读各自单人卡 → 每人按自己人设写「名字：『台词』」→ 点结束后自动写"群像大总结 + 在场者 POV"，按天合并、幂等不重复。</div>
+  <div class="fig-cap">勾选出场 → 现场读各自单人卡 → 每人按自己人设写「名字：『台词』」→ 点结束后按自然日切分，生成一份全知第三人称总结，原样写进在场每个角色的记忆库；未出场角色不写，按剧情指纹幂等不重复。</div>
   </div></figure>
 
   <h3 class="mini">怎么用</h3>
@@ -798,8 +798,10 @@
     <dl class="kv">
       <dt>现场读单人卡</dt><dd>生成时把出场者的单人卡 description 动态拼进提示词——改任何单人卡，下一场自动读新版，不用重装、不用同步。每个人只照自己那份人设写，不串味。</dd>
       <dt>人称</dt><dd>配套装的原版改造预设把人称锁在"第二人称『你』只指读者、出场者一律用名字"，避免把几个人揉成一个人格。</dd>
-      <dt>收工写记忆</dt><dd>点「结束」后，按天合并落库，自动补一条群像大总结 + 给在场者各写一条 POV。日期按 Asia/Seoul；并发锁、幂等指纹防重复；只有点「结束」才触发，切换/关闭剧情不触发。</dd>
-      <dt>写在哪个库</dt><dd>群像集体库用 <code>role-r-cast-stage</code>（与舞台卡 id 对应）；在场者 POV 写进各自角色库，key 从角色卡现算。没出场的跳过。</dd>
+      <dt>收工写记忆（v2）</dt><dd>点「结束」后按自然日切分（Asia/Seoul）：一天生成<b>一份全知第三人称总结</b>——凡勾进本场的角色全程在场、全场细节共享，不写"他只看见"这种限知句——再把<b>同一份文本原样</b>写进在场每个角色的记忆库，逐字相同。未出场角色一个字都不写。只有点「结束」才触发，切换/关闭剧情不触发。</dd>
+      <dt>写在哪个库</dt><dd>群像集体库用 <code>role-r-cast-stage</code>（与舞台卡 id 对应）存大总结；在场者的共享记忆写进各自角色库，key 从角色卡现算。没出场的跳过。</dd>
+      <dt>幂等与补写</dt><dd>指纹 = <code>cast:剧情id-日期.md-材料字数</code>，写在每条记忆的 keywords。<b>只认本剧情本日期的指纹</b>——同一天另一场戏写的记忆不会再误挡本场。重跑时只补缺的人、不重写已有的人；想强制重写就手动删掉那条带目标指纹的记忆。</dd>
+      <dt>跨天的戏</dt><dd>一场戏横跨两天就切成两份，各写各的日期。22 号的戏不会被 23 号的覆盖。</dd>
       <dt>改了哪些文件</dt><dd>服务端 13 处（出场名单存取、动态拼人设、收工触发）、前端 8 处（勾选 UI），另装舞台卡、基于原版出厂预设改造的通用群像预设、收工/扇出脚本。</dd>
       <dt>兼容性 / 共存</dt><dd>原版 1.22.2 / 1.22.7 均实测可装（服务端 13 处、前端 8 处锚点全命中）。零硬编码：不写死角色名、称呼、模型、key。和模块 ⑤ 都改 <code>offline.jsx</code> 但锚点不同，<b>已实测可同时装</b>。</dd>
     </dl>

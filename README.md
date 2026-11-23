@@ -3,7 +3,7 @@
 > ## 📖 先看白皮书（图文并茂，讲清每个补丁"界面变成什么样"）
 >
 > **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）——章节已按**推荐安装顺序**排列，并标注 Mac / Windows 适用性
-> **📦 不想看代码？直接下整包**：[`uranus-patches-v1.1.4.zip`](https://github.com/zyeonheenim/uranus_patches_awesome/releases/latest)（五个模块 + 白皮书，解压双击安装）
+> **📦 不想看代码？直接下整包**：[`uranus-patches-v1.1.5.zip`](https://github.com/zyeonheenim/uranus_patches_awesome/releases/latest)（五个模块 + 白皮书，解压双击安装）
 > 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，另有 Windows 安装与兼容矩阵，基于原版 **1.22.3 与 1.22.9** 实测，零隐私。
 
 > ## 🆕 新增：玩家补丁合集（日志抽屉 / 唤醒自愈 / 入站看门狗 / 群像舞台 / 线下剧情增强）
@@ -14,7 +14,7 @@
 > ③ 入站断流每 60 秒巡检自愈（macOS）；④ 群像舞台——线下剧情勾选出场角色、读各自人设、收工自动写记忆；
 > ⑤ 线下剧情增强——版本留底 / 气泡样式 / 模型token / 右缘四钮快速跳转。
 >
-> **Windows 支持**：01 / 04 / 05 双击模块里的 `安装.bat` 即可（同一份 Node 逻辑）；02 / 03 依赖 macOS 的 launchd 与 `uranus.log`，只有 macOS 版——原因和 Windows 常见问题见[白皮书的 Windows 一节](https://zyeonheenim.github.io/uranus_patches_awesome/#windows)。**上游 1.22.9 适配**：合集已在 1.22.9 实测，01 / 03 / 04 / 05 五个功能全部照常可装、装→卸往返逐字节还原（1.22.9 只在上游自己的区域加了秒表与并发闸，与我们的补丁不重叠）。**出场人数不限**：两人对戏、三四个、更多都行，勾了谁只读谁的人设，**状态栏也只列勾选的这几个人**（v1.1.4 起按本场名单现场生成，没出场的人一行都不会有）。
+> **Windows 支持**：01 / 04 / 05 双击模块里的 `安装.bat` 即可（同一份 Node 逻辑）；02 / 03 依赖 macOS 的 launchd 与 `uranus.log`，只有 macOS 版——原因和 Windows 常见问题见[白皮书的 Windows 一节](https://zyeonheenim.github.io/uranus_patches_awesome/#windows)。**上游 1.22.9 适配**：合集已在 1.22.9 实测，01 / 03 / 04 / 05 五个功能全部照常可装、装→卸往返逐字节还原（1.22.9 只在上游自己的区域加了秒表与并发闸，与我们的补丁不重叠）。**出场人数不限**：两人对戏、三四个、更多都行，勾了谁只读谁的人设，**状态栏也只列勾选的这几个人**（v1.1.5 起按本场名单现场生成，没出场的人一行都不会有）。
 >
 > 这一套已彻底脱敏：**不含任何角色名、人设、密钥、账号或个人信息**，模型与 API key
 > 全部在安装后从玩家自己的 Uranus 配置里读取。详见合集中的 `README.md` 与各模块说明。
