@@ -111,6 +111,16 @@ try {
 }
 
 say("");
+say("→ 音色补丁（台词按说话人用各自角色卡音色念）");
+try {
+  execFileSync(process.execPath, [path.join(FILES_DIR, "音色服务端补丁.mjs")], { stdio: "inherit", env });
+  execFileSync(process.execPath, [path.join(FILES_DIR, "音色补丁.mjs")], { stdio: "inherit", env });
+} catch {
+  rollback(root, box);
+  die("音色补丁失败，已回滚。");
+}
+
+say("");
 say("→ 语法校验");
 const bad = checkJs(root, PATCHED.filter((f) => f.startsWith("server/")));
 if (bad.length) {
