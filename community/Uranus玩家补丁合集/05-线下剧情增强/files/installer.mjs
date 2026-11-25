@@ -88,7 +88,7 @@ const CATALOG = [
     dir: "patches/04-offline-model-token",
     title: "线下剧情 · 模型与 token",
     kind: "patch",
-    needs: ["02", "03"],
+    needs: ["02"], // 实测（1.22.9 基线，fuzz=0，6 文件全中）不依赖 03 气泡样式
     summary: "气泡标题写清「哪个服务商·模型 + ↑输入(缓存) ↓输出」",
     patch: "04-model-token.patch",
     markers: [
@@ -365,7 +365,9 @@ function select() {
   for (const id of ids) {
     if (!CATALOG.some((m) => m.id === id)) die(`没有第 ${id} 号补丁（可用：${CATALOG.map((m) => m.id).join(" / ")}）`);
   }
-  // 依赖闭包：03 要 02，04 要 02+03。缺的自动补上并说一声。
+  // 依赖闭包：03 要 02。缺的自动补上并说一声。
+  // 04 只需要 02（实测：1.22.9 基线只打 02 之后，04 的 6 个文件 fuzz=0 全中），
+  // 所以可以「装了气泡样式插件 → 补丁只装 02+04」而不重复装气泡样式。
   const set = new Set(ids);
   const added = [];
   let changed = true;
