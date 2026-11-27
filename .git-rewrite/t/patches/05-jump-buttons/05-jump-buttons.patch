@@ -1,0 +1,195 @@
+--- a/client/src/panels/offline.jsx
++++ b/client/src/panels/offline.jsx
+@@ -37,6 +37,9 @@
+   Check,
+   ChevronDown,
+   ChevronRight,
++  ChevronsDown,
++  ChevronsUp,
++  ChevronUp,
+   CircleAlert,
+   CirclePlay,
+   CircleStop,
+@@ -1444,6 +1447,16 @@
+    * 手刚碰过，这一会儿谁都别动滚动位置。两条是或的关系，任一条成立就让开。
+    */
+   const touchedAt = useRef(0);
++  /*
++   * 「回顶」进行中。
++   *
++   * WebKit 的坑：点「回到最上面」发起的平滑滚动，途中只要任何代码写一次
++   * `scrollTop`（下面「补更早」的锚回就是这么干的），**动画当场取消**，页面就
++   * 停在半路 —— Chrome/Blink 会重新瞄准 0 继续飞完，所以同一个按钮 Chrome 准、
++   * Safari 偏。这里记一个标志：回顶没被取消之前，锚回一律改成「直接钉在 0」，
++   * 补几批就钉几次，直到补完或用户自己动手（滚轮/触摸/点「跳到底」）为止。
++   */
++  const jumpTop = useRef(false);
+ 
+   const refreshRows = useCallback(async () => {
+     try {
+@@ -1759,6 +1772,7 @@
+     anchor.current = null;
+     // 新开一条剧情从底部看起，上一条翻到一半的状态不带过来
+     stick.current = true;
++    jumpTop.current = false;
+     // 切剧情那一下点击也算「手碰过」，不清的话新剧情开头不会滚到底
+     touchedAt.current = 0;
+   }, [sid]);
+@@ -1831,6 +1845,8 @@
+      */
+     const onTouch = () => {
+       touchedAt.current = Date.now();
++      // 手真的在动 = 回顶让位。不撤的话之后手动上翻补历史会被强行按回 0
++      jumpTop.current = false;
+     };
+     box.addEventListener("scroll", onScroll, { passive: true });
+     box.addEventListener("touchstart", onTouch, { passive: true });
+@@ -1900,6 +1916,17 @@
+     const at = nearTop.current;
+     nearTop.current = null;
+     if (!at) return;
++    /*
++     * 回顶进行中就别锚回了：用户要的就是最顶上，补进来的内容全在视口上方，
++     * 直接钉回 0。写完后 scrollTop 没变（本来就是 0）的话不会再发 scroll、
++     * 补更早的链会断 —— 补一个合成 scroll 让链条自己走到底。
++     */
++    if (jumpTop.current) {
++      const was = at.box.scrollTop;
++      at.box.scrollTop = 0;
++      if (was === 0) at.box.dispatchEvent(new Event("scroll"));
++      return;
++    }
+     /* 让那一条回到补之前的位置：现在的距离 − 补之前的距离，就是要补的滚动量 */
+     const now = at.mark.getBoundingClientRect().top - at.box.getBoundingClientRect().top;
+     at.box.scrollTop += now - at.offset;
+@@ -2088,6 +2115,73 @@
+     });
+     if (r?.ok) setNote("手写的那份存好了。");
+   }
++
++  /*
++   * 快速跳转：回顶 / 回底。
++   * 滚动容器是壳子那个 <main data-scroll>（这一页自己不滚），从哨兵往上找。
++   * 回底要把钉底闸顺手掰开 —— 不然跳到底之后闸还是关的，来一条新的不跟着动。
++   * 回顶会触发「补更早」的链：跟手动滚到顶是同一条路，属于预期行为。
++   */
++  const jumpEdge = useCallback((edge) => {
++    const box = bottom.current?.closest("[data-scroll]");
++    if (!box) return;
++    if (edge === "top") {
++      // 途中「补更早」的锚回会写 scrollTop（WebKit 里这一下会把平滑滚动打断，
++      // 停在半路）。挂上标志让锚回改成钉 0，见 jumpTop 那条注释。
++      jumpTop.current = true;
++      box.scrollTo({ top: 0, behavior: "smooth" });
++    } else {
++      jumpTop.current = false;
++      stick.current = true;
++      box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
++    }
++  }, []);
++
++  /*
++   * Kelivo 同款：单箭头在「你说的话」之间跳。
++   * 滚动容器同 jumpEdge；定位标记是每条消息外层那个 data-turn-user。
++   * 往上 = 视口顶之上最后一个用户发言（没有就停在第一条）；
++   * 往下 = 视口顶之下第一个（没有就往下翻一屏）。
++   *
++   * 🔴 以前这里用 `target.scrollIntoView({behavior:"smooth"})`，和 ⏫⏬ 两个按钮
++   * 用的 `box.scrollTo` 不是一条路。在这套壳子里那条路不顶用（⏫⏬ 一直好使、
++   * 就它俩不动），而且 smooth 还会被「补更早」的锚回写 scrollTop 打断。现在
++   * 统一成 `box.scrollTo`：自己算目标相对滚动容器的位置，即时滚过去，和
++   * jumpEdge 完全同一条路。
++   */
++  const jumpUser = useCallback(
++    (dir) => {
++      const box = bottom.current?.closest("[data-scroll]");
++      if (!box) return;
++      const nodes = Array.from(box.querySelectorAll("[data-turn-user]"));
++      if (!nodes.length) return;
++      const boxRect = box.getBoundingClientRect();
++      /* 节点在「滚动内容」里的绝对位置 = 视口位置 - 容器视口位置 + 已滚过的量 */
++      const contentTop = (el) => el.getBoundingClientRect().top - boxRect.top + box.scrollTop;
++      /* 目标放在视口上三分处：壳子顶上有悬停标题栏，别贴着顶钻进去 */
++      const aim = (el) => Math.max(0, contentTop(el) - box.clientHeight / 3);
++      if (dir < 0) {
++        /* 往上：找**视口顶之上**那条（已经滚出去的），取离得最近的一条 */
++        const above = nodes.filter((n) => n.getBoundingClientRect().bottom < boxRect.top - 8);
++        const target = above.length ? above[above.length - 1] : nodes[0];
++        box.scrollTo({ top: aim(target), behavior: "auto" });
++      } else {
++        /*
++         * 🔴 往下必须拿「视口底」当参照：找屏幕下方**还没看到**的那条。
++         * 以前用的 `top > boxTop + 8` 是「视口顶之下」，把当前屏幕里已经能看见
++         * 的那条也算进去了 —— 滚过去几乎不动，再点还是它，于是永远卡在第一条。
++         */
++        const below = nodes.filter((n) => n.getBoundingClientRect().top > boxRect.bottom + 8);
++        if (below.length) {
++          box.scrollTo({ top: aim(below[0]), behavior: "auto" });
++        } else {
++          /* 下面没有你的发言了：往下翻一屏 */
++          box.scrollTo({ top: box.scrollTop + box.clientHeight * 0.9, behavior: "auto" });
++        }
++      }
++    },
++    []
++  );
+ 
+   const gateOff = row ? !row.gate : false;
+   const summaries = story?.summaries ?? [];
+@@ -2321,6 +2415,7 @@
+                   {visible.map((t, i) => (
+                     <div
+                       key={t.id}
++                      data-turn-user={t.role === "user" ? "1" : undefined}
+                       /* 补更早那批之前，把这一条的位置记下来当锚点 */
+                       ref={i === 0 ? (el) => { if (el) anchor.current = el; } : undefined}
+                       className="grid grid-cols-1 gap-3"
+@@ -2389,6 +2484,48 @@
+                       )}
+                     </div>
+                   ))}
++
++                  {/* 快速跳转：右缘居中的四个圆钮（Kelivo 同款）。剧情没开始就不挂 */}
++                  {story && (
++                    <div className="fixed right-5 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1.5">
++                      <button
++                        type="button"
++                        onClick={() => jumpEdge("top")}
++                        title="回到最上面"
++                        aria-label="回到最上面"
++                        className="flex h-9 w-9 items-center justify-center rounded-full border border-line/60 bg-paper/55 text-ink-soft shadow-sm backdrop-blur-sm transition-colors duration-150 hover:border-ink-soft/60 hover:bg-paper/85 hover:text-ink"
++                      >
++                        <ChevronsUp size={15} />
++                      </button>
++                      <button
++                        type="button"
++                        onClick={() => jumpUser(-1)}
++                        title="上一次你的发言"
++                        aria-label="上一次你的发言"
++                        className="flex h-9 w-9 items-center justify-center rounded-full border border-line/60 bg-paper/55 text-ink-soft shadow-sm backdrop-blur-sm transition-colors duration-150 hover:border-ink-soft/60 hover:bg-paper/85 hover:text-ink"
++                      >
++                        <ChevronUp size={15} />
++                      </button>
++                      <button
++                        type="button"
++                        onClick={() => jumpUser(1)}
++                        title="下一次你的发言"
++                        aria-label="下一次你的发言"
++                        className="flex h-9 w-9 items-center justify-center rounded-full border border-line/60 bg-paper/55 text-ink-soft shadow-sm backdrop-blur-sm transition-colors duration-150 hover:border-ink-soft/60 hover:bg-paper/85 hover:text-ink"
++                      >
++                        <ChevronDown size={15} />
++                      </button>
++                      <button
++                        type="button"
++                        onClick={() => jumpEdge("bottom")}
++                        title="跳到最新"
++                        aria-label="跳到最新"
++                        className="flex h-9 w-9 items-center justify-center rounded-full border border-line/60 bg-paper/55 text-ink-soft shadow-sm backdrop-blur-sm transition-colors duration-150 hover:border-ink-soft/60 hover:bg-paper/85 hover:text-ink"
++                      >
++                        <ChevronsDown size={15} />
++                      </button>
++                    </div>
++                  )}
+ 
+                   {/*
+                     * 你刚发出去、后端还没回话的那句。

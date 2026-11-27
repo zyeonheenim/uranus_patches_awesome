@@ -1,0 +1,410 @@
+# uranus_patches_awesome
+
+> ## 📖 先看白皮书（图文并茂，讲清每个补丁"界面变成什么样"）
+>
+> **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）——章节已按**推荐安装顺序**排列，并标注 Mac / Windows 适用性
+> **📦 不想看代码？直接下整包**：[`uranus-patches-v1.1.7.zip`](https://github.com/zyeonheenim/uranus_patches_awesome/releases/latest)（五个模块 + 白皮书，解压双击安装）
+> 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，另有 Windows 安装与兼容矩阵，基于原版 **1.22.3 与 1.22.9** 实测，零隐私。
+
+> ## 🆕 新增：玩家补丁合集（日志抽屉 / 唤醒自愈 / 入站看门狗 / 群像舞台 / 线下剧情增强）
+>
+> 另一套**每模块独立、双击 `.command` 即装**、可单独卸载的补丁，放在
+> [`community/Uranus玩家补丁合集/`](community/Uranus玩家补丁合集/)。
+> 五个模块：① 常驻实时日志抽屉 + 模型快切（聊天/线下/兜底，就地切换）；② 睡醒后网络卡死自动重启（macOS）；
+> ③ 入站断流每 60 秒巡检自愈（macOS）；④ 群像舞台——线下剧情勾选出场角色、读各自人设、收工自动写记忆；
+> ⑤ 线下剧情增强——版本留底 / 气泡样式 / 模型token / 右缘四钮快速跳转。
+>
+> **Windows 支持**：01 / 04 / 05 双击模块里的 `安装.bat` 即可（同一份 Node 逻辑）；02 / 03 依赖 macOS 的 launchd 与 `uranus.log`，只有 macOS 版——原因和 Windows 常见问题见[白皮书的 Windows 一节](https://zyeonheenim.github.io/uranus_patches_awesome/#windows)。**上游 1.22.9 适配**：合集已在 1.22.9 实测，01 / 03 / 04 / 05 五个功能全部照常可装、装→卸往返逐字节还原（1.22.9 只在上游自己的区域加了秒表与并发闸，与我们的补丁不重叠）。**隐私/通用**：安装包零写死角色名、零称呼定制、零人数假设，任何自创角色（user/charA/charB）都能直接装（v1.1.5.1 起）。**按角色音色朗读**：群像台词是谁说的就用谁角色卡的音色念（v1.1.6 起）。**四钮跳转**：单箭头 ⬆️/⬇️ 现在能逐条跳你的发言、不再卡第一条（v1.1.7 起）。**出场人数不限**：两人对戏、三四个、更多都行，勾了谁只读谁的人设，**状态栏也只列勾选的这几个人**（v1.1.5 起按本场名单现场生成，没出场的人一行都不会有）。
+>
+> 这一套已彻底脱敏：**不含任何角色名、人设、密钥、账号或个人信息**，模型与 API key
+> 全部在安装后从玩家自己的 Uranus 配置里读取。详见合集中的 `README.md` 与各模块说明。
+> 下方原有五个补丁（统一安装器那套，含新增的 05 四钮跳转）保持不变，两套互不影响。
+
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
+![License](https://img.shields.io/badge/license-MIT%20%2F%20non--commercial-lightgrey)
+![Base](https://img.shields.io/badge/Uranus-1.22.3%20~%201.22.9-blue)
+![Patches](https://img.shields.io/badge/patches-5-orange)
+
+**给 [Uranus](https://github.com/nikonotnicotine/Uranus_Imessage) 用的一组补丁。一个补丁只干一件事，装之前自动备份，装坏了能一键退回。**
+
+> ### 先看清楚这是什么
+>
+> 这里**没有 Uranus 本体**，只有补丁。上游项目是
+> **[nikonotnicotine/Uranus_Imessage](https://github.com/nikonotnicotine/Uranus_Imessage)**
+> （自建 iMessage 角色扮演客户端，**非商业许可**），补丁基线是它的 **v1.22.3**。
+> 已经升到 **1.22.9** 的话，请用下方 [community 合集](community/Uranus玩家补丁合集/) 那一套（已适配 1.22.9）；
+> 本页这套统一安装器仍以 1.22.3 为基线。
+>
+> - **已经装了 Uranus** → 直接 `node install.mjs --all --run`，完事。
+> - **手上没有** → `node setup.mjs --run --install`：自动从上游官方仓库拉一份干净的 v1.22.3，再打补丁。
+>   仓库里不存源码副本（上游许可只允许「原样、不收费、附全文」地转发），原因见 [docs/upstream.md](docs/upstream.md)。
+>
+> 上游许可的核心就一句：**自己玩、自己学，随便；赚钱，不行。**
+
+这里的五个补丁都来自真实使用中的痛点，不是「看起来会很酷」的功能：
+
+| # | 补丁 | 治什么 | 类型 |
+|---|---|---|---|
+| 01 | [唤醒防断流](#01--唤醒防断流-nosleep-guard) | Mac 睡一觉醒来，Uranus 还活着但出网全废（`ENOTFOUND`），角色不回消息 | 独立脚本，**不改 Uranus 代码** |
+| 02 | [线下剧情 · 版本留底](#02--线下剧情--版本留底-version-history) | 重 roll 之后旧稿没了，手改之后原句没了，删错了找不回来 | 代码补丁（1.22.3） |
+| 03 | [线下剧情 · 气泡样式](#03--线下剧情--气泡样式-bubble-style) | 手机上调好的气泡配色，电脑上不生效（localStorage 按源站隔离） | 代码补丁（1.22.3） |
+| 04 | [线下剧情 · 模型与 token](#04--线下剧情--模型与-token-model--token) | 不知道这一轮是哪条线生成的、花了多少 token、是不是偷偷用了兜底 | 代码补丁（1.22.3） |
+| 05 | [线下剧情 · 四钮快速跳转](#05--线下剧情--四钮快速跳转-jump-buttons) | 长剧情里找自己说过的某句话要划到手酸 → 右缘四个圆钮一键跳顶/跳底/上一条/下一条 | 代码补丁（1.22.3） |
+
+> 02 / 03 / 04 / 05 是同一个组件（线下剧情气泡页）上的四个功能，所以它们**按 02 → 03 → 04 → 05 叠加**。
+> 只装到 02 是完整可用的（纯版本留底）；05 四钮跳转不依赖其他补丁，可单独装 —— 原因见 [docs/install.md](docs/install.md#为什么-020304-要叠着装)。
+
+---
+
+## 目录
+
+- [快速开始](#快速开始)
+- [上游项目与版本](#上游项目与版本)
+- [补丁清单](#补丁清单)
+- [01 · 唤醒防断流](#01--唤醒防断流-nosleep-guard)
+- [02 · 线下剧情 · 版本留底](#02--线下剧情--版本留底-version-history)
+- [03 · 线下剧情 · 气泡样式](#03--线下剧情--气泡样式-bubble-style)
+- [04 · 线下剧情 · 模型与 token](#04--线下剧情--模型与-token-model--token)
+- [安装器怎么用](#安装器怎么用)
+- [卸载 / 回退](#卸载--回退)
+- [Uranus 升级之后](#uranus-升级之后)
+- [兼容性与已知限制](#兼容性与已知限制)
+- [目录结构](#目录结构)
+- [为什么不直接用 git patch](#为什么不直接用-git-patch)
+- [English](#english)
+
+---
+
+## 快速开始
+
+**手上已经有 Uranus：**
+
+```bash
+# 仓库地址（旧名 uranus-nosleep-guard 已改名，GitHub 会自动跳转，但建议直接用新地址）
+git clone https://github.com/zyeonheenim/uranus_patches_awesome.git
+cd uranus_patches_awesome
+
+node install.mjs                 # 先看：会改哪些文件（不写盘）
+node install.mjs --all --run     # 真的装（01 + 02 + 03 + 04）
+```
+
+**手上还没有 Uranus（换机器、想先试装一份）：**
+
+```bash
+node setup.mjs                       # 预览：拉哪个 tag、拉到哪、装什么
+node setup.mjs --run --install       # 从上游拉干净的 v1.22.3，然后装全部补丁
+```
+
+只想装其中一个：
+
+```bash
+node install.mjs --only 02 --run          # 只装「版本留底」
+node install.mjs --only 02,03 --run       # 版本留底 + 气泡样式
+node install.mjs --only 01 --run          # 只装唤醒防断流
+```
+
+装完两件事：**重启 Uranus**、浏览器 **Cmd+R**（前端有缓存）。
+
+**Windows**：同一份 `install.mjs` 可以直接跑（`node install.mjs --all --run`）。它会用 `npm.cmd` 构建前端，并在 01 号「唤醒防断流」上自动跳过（那是 launchd 脚本，Windows 没有对应物）。装完在 Uranus 的窗口按 `Ctrl+C` 再双击 `启动.bat`，或直接关掉窗口重开。
+
+Uranus 装在哪？安装器会自己找（当前目录 / 上一层 / 家目录下的 `Uranus_Imessage`）。找不到就指定（Windows 用 `set URANUS_DIR=D:\Uranus`）：
+
+```bash
+URANUS_DIR=/path/to/Uranus_Imessage node install.mjs --all --run
+```
+
+---
+
+## 上游项目与版本
+
+| 项 | 值 |
+|---|---|
+| 上游 | [nikonotnicotine/Uranus_Imessage](https://github.com/nikonotnicotine/Uranus_Imessage)（[@nikonotnicotine](https://github.com/nikonotnicotine)） |
+| 补丁基线 | **v1.22.3**（community 合集那套已另做 **1.22.9** 适配） |
+| 上游许可 | 自定义非商业许可（[LICENSE](https://github.com/nikonotnicotine/Uranus_Imessage/blob/master/LICENSE)） |
+| 本仓库自带源码 | **没有**（许可只允许原样转发；补丁属于修改） |
+
+补丁是按 tag 源码逐行对上的，所以版本很要紧：1.22.3 精确匹配；1.22.4 多半能过；
+更旧或更新会被**整体拒绝**（你的文件原封不动，不会写坏半个文件），`--force` 可强装。
+**1.22.9 请直接用 [community 合集](community/Uranus玩家补丁合集/)** —— 那套已经做过 1.22.9 适配与实测。
+
+拉源码的方式有两种，结果一样（实测同为 282 个文件、逐字节无差异）：
+
+```bash
+node setup.mjs --run --install                 # 默认：git clone --depth 1 --branch v1.22.3
+node setup.mjs --run --install --no-git        # 没装 git：走官方 tarball
+node setup.mjs --run --use-existing --install  # 不下载，直接对已有目录装
+```
+
+细节（版本对应表、升级后怎么办、许可怎么算）：[docs/upstream.md](docs/upstream.md)。
+
+---
+
+## 补丁清单
+
+### 01 · 唤醒防断流 (nosleep-guard)
+
+**症状**：Mac 合盖睡一晚，早上打开 —— Uranus 进程在、8787 端口在监听、控制台能开，
+但所有出网请求超时（`ENOTFOUND` / `UND_ERR_CONNECT_TIMEOUT`），iMessage 不回、IG 不动、定时发信不发。
+这是「进程活着，网络栈被休眠挂死了」。
+
+**做法**：launchd 每 5 分钟看一次。三个条件**同时**满足才重启一次 Uranus：
+
+1. 8787 有进程在监听（没监听就交给 Uranus 自己的 `KeepAlive`，脚本不插手）；
+2. **进程启动时间早于最近一次真正的唤醒**（`pmset -g log`，排除 `DarkWake` / `Maintenance`）；
+3. 已唤醒超过 90 秒（避开唤醒瞬间的网络抖动）。
+
+- 不禁用系统睡眠、不 `pkill`、不轮询拨号、零依赖（只用 macOS 自带命令）
+- 平时完全静默，日志只有真的重启过才会写一行
+- 📖 详细说明：[patches/01-nosleep-guard/README.md](patches/01-nosleep-guard/README.md) ｜ 手把手指南：[USAGE.md](patches/01-nosleep-guard/USAGE.md)
+
+```bash
+# 也可以单独双击装（不装另外三个）
+patches/01-nosleep-guard/install.command
+```
+
+---
+
+### 02 · 线下剧情 · 版本留底 (version-history)
+
+重 roll 是日常操作，但 Uranus 原版是**直接删**：一按重 roll，上一版正文就没了。
+手改也是原地覆盖，改完想找回原句只能翻记忆库里残缺的总结。
+
+装上之后：
+
+- 重 roll 的旧稿、手改前的旧稿、被删掉的整轮 —— **都留底**
+- 气泡标题多一个 `历史 3` 小按钮，点开是这一轮的全部旧版本，`⟲` 一键写回正文
+- 恢复时**当前版本也会先留底**，来回切不丢任何一版
+- 历史版本只给界面看，**不进模型上下文**（不会因为翻旧稿让剧情错乱）
+- 每条轮次最多留 20 版，每段剧情最多留 100 条已删除轮次（有上限，文件不会无限膨胀）
+
+📖 [patches/02-offline-version-history/README.md](patches/02-offline-version-history/README.md)
+
+---
+
+### 03 · 线下剧情 · 气泡样式 (bubble-style)
+
+Uranus 原版的气泡样式只能改主题，改不了「我这侧浅灰、他那侧米白、圆角 18、边框淡一点」。
+
+装上之后：线下页顶部多一个 **样式** 按钮 —— 上方实时预览，`跟随主题 / 自定义` 二选一，
+自定义里 **用户侧 / 助手侧分别** 调底色、底色不透明度、边框色、边框不透明度、边框宽度、文字色、圆角。
+改完即时生效，没有「保存」按钮，关掉就是存好了。
+
+关键点：**样式存在服务端**（`data/offline-bubbles.json`，走 `/api/offline-bubbles`），
+不是只塞在浏览器里 —— 因为 localStorage 按「设备 + 浏览器 + 源站」隔离，
+手机用 `http://192.168.x.x:8787`、电脑用 `http://127.0.0.1:8787` 打开时**永远是两份**，
+所以手机上调完电脑上不变。现在两台设备读同一份。
+
+📖 [patches/03-offline-bubble-style/README.md](patches/03-offline-bubble-style/README.md)
+
+---
+
+### 04 · 线下剧情 · 模型与 token (model / token)
+
+一个角色配了主 API + 兜底 API，出问题时最想知道的就是：**这一轮到底是谁写的、花了多少。**
+
+装上之后气泡标题变成：
+
+```
+助手  今天 19:24  ｜服务商 · 模型名  ｜↑49.3k(46k) ↓189
+```
+
+- 最前面是**角色（char）的显示名** —— Uranus 里就是你给这张角色卡起的名字，示例写作「助手」，实际显示你自己的
+- `｜服务商 · 模型`：这一轮实际用的端点（示例是占位符）。**走兜底的那轮记兜底的标签** —— 「为什么这轮风格不对」一眼能看出来
+- `↑输入`：发给模型的 token，括号里是**缓存命中**的部分；`↓输出`：模型回的 token
+- 悬停看精确值（`输入 49299 tokens（缓存命中 45964）· 输出 189`）
+- 历史版本抽屉里每一版也带自己的用量，恢复旧稿时用量跟着版本走
+- 用量识别三种形状：OpenAI（`prompt_tokens`）、Gemini 原生（`usageMetadata`，Google Vertex 走这个）、Claude（`input_tokens`）
+
+上游不回 usage 的那一轮就不显示，不影响别的。
+
+📖 [patches/04-offline-model-token/README.md](patches/04-offline-model-token/README.md)
+
+---
+
+### 05 · 线下剧情 · 四钮快速跳转 (jump-buttons)
+
+剧情演长了（几百轮），想回到自己之前说过的某句话，或者想直接看最新一轮，只能一指一指往上划。这个补丁在右缘加四个半透明圆钮：
+
+```
+   ⇤⇤   回到最上面
+    ⇡    上一次你的发言
+    ⇣    下一次你的发言
+   ⇥⇥   跳到最新
+```
+
+- 双箭头跳到两端，单箭头在「你」的发言之间一次跳一条
+- 剧情没开始时不显示；半透明玻璃质感，悬停才加深
+- 顺手修了个 Safari 坑：原本点「回顶」时平滑滚动会被「补更早」的逻辑打断、停在半路（Chrome 正常），加了个标志让回顶途中锚回直接钉在顶部，两个浏览器行为一致
+- 顺手修了两个滚动坑：① 单箭头改走 `scrollTo`（原 `scrollIntoView` 在这套容器里对 ⬆️⬇️ 不生效）；② 「下一条」改按视口底找屏幕下方还没看到的发言，不再卡在第一条（v1.1.7）
+- 纯前端改动，不碰服务端、不碰存档；不依赖其他补丁，可单独装
+
+📖 [patches/05-jump-buttons/README.md](patches/05-jump-buttons/README.md)
+
+---
+
+## 安装器怎么用
+
+```
+node install.mjs --list                  列出补丁和状态（装没装、能不能装）
+node install.mjs                         预览：会改哪些文件（默认不写盘）
+node install.mjs --run --all             全装
+node install.mjs --only 01,02 --run      装指定几个
+node install.mjs --all --run --no-build  跳过前端构建（你自己会 build）
+node install.mjs --all --run --force     版本号对不上也强装
+```
+
+安装器做的事，按顺序：
+
+1. **找目录 + 认版本**：读 `package.json` 的 `name: uranus-imessage` 和 `version`；不是 1.22.3 会停下来问你（`--force` 才继续）
+2. **预演**：整份补丁先在内存里跑一遍，任何一个 hunk 对不上 → **整体不动**，一个字节都不写
+3. **备份**：被改的文件原样复制到 `.patches-backup-<时间戳>/`（含 `manifest.json`）
+4. **写入**：按 02 → 03 → 04 顺序打
+5. **语法检查**：`node --check` 每个改过的服务端文件，不过就**自动用备份回滚**
+6. **构建前端**：`cd client && npm run build`（没有 `node_modules` 会跳过并提醒）
+7. **自检**：跑 `tests/smoke.mjs`（纯逻辑，不联网、不碰你的数据）
+
+---
+
+## 卸载 / 回退
+
+```bash
+node uninstall.mjs           # 预览：会用哪份备份还原什么
+node uninstall.mjs --run     # 真的还原
+```
+
+卸载走**安装时的那份备份**，所以还原是逐字节的（新加的文件会被删掉，改过的文件会回到安装前）。
+补丁 01 有自己的卸载：`patches/01-nosleep-guard/uninstall.command`（只删定时任务，不动 Uranus 主服务）。
+
+---
+
+## Uranus 升级之后
+
+**升级会覆盖被改的文件** —— 补丁不是插件，是直接改源码。所以：
+
+```bash
+cd uranus_patches_awesome && git pull
+node install.mjs --list          # 看哪些补丁「已失效」
+node install.mjs --all --run     # 重新装上
+```
+
+- 版本号变了但代码没大动（1.22.x 内的小改）：`--force` 通常能打上
+- 大版本升级后上下文对不上：安装器会**拒绝安装并说明哪个文件对不上**，不会改坏东西。
+  这种情况提 issue，把 `package.json` 的版本号贴上，我按新版本重出补丁。
+
+---
+
+## 兼容性与已知限制
+
+- **补丁 02/03/04 只针对 Uranus 1.22.3**（基线源码：官方发布的 1.22.3，未含任何第三方改动）；
+  1.22.9 请用 [community 合集](community/Uranus玩家补丁合集/)（已适配并实测）
+- 前端改的是 `client/src/panels/offline.jsx` 等文件，装完**必须重新 build**，否则界面还是旧的
+- 补丁只动「线下剧情」这条链，**不碰** iMessage 桥接、查手机、记忆库的既有逻辑
+- 03 的样式存在 `data/offline-bubbles.json`，备份 Uranus 时记得一起备份
+- 04 的用量只能从「有 usage 的上游」取；流式源不回 usage 尾帧的那一轮就没有数字
+- **不含任何角色卡、世界书、记忆库、API 密钥** —— 这个仓库只有机制，没有我的私人设定
+- 01 只支持 macOS（launchd / `pmset`）；Windows 与 Linux 请跳过 01
+
+---
+
+## 目录结构
+
+```
+uranus_patches_awesome/
+├── install.mjs               统一安装器（自带纯 JS 补丁引擎）
+├── uninstall.mjs             按备份还原
+├── setup.mjs                 从上游拉干净源码（不存副本），再交给 install.mjs
+├── 安装.command               双击：全装
+├── NOTICE.md                 归属与许可边界（上游非商业许可）
+├── patches/
+│   ├── 01-nosleep-guard/     独立脚本补丁（不改代码）
+│   │   ├── README.md  USAGE.md
+│   │   ├── install.command  uninstall.command
+│   │   └── files/uranus-wake-restart.sh
+│   ├── 02-offline-version-history/   README.md + 02-version-history.patch
+│   ├── 03-offline-bubble-style/      README.md + 03-bubble-style.patch
+│   ├── 04-offline-model-token/       README.md + 04-model-token.patch
+│   └── 05-jump-buttons/              README.md + 05-jump-buttons.patch
+├── community/
+│   └── Uranus玩家补丁合集/           另一套：五模块独立安装、双击即装、含 Windows 版（已适配 1.22.9）
+├── docs/
+│   ├── install.md            安装细节、叠装顺序、排错
+│   ├── upstream.md           上游项目、版本对应、许可、为什么不打包源码
+│   └── how-it-works.md       每个补丁的实现要点（给想改的人）
+├── tests/smoke.mjs           装完自检（纯逻辑，不联网）
+└── CHANGELOG.md
+```
+
+---
+
+## 为什么不直接用 git patch
+
+因为分发对象是「用 Uranus 的人」，不是「维护 Uranus 的人」：
+
+- 有人 Windows 上跑 Uranus，**没有 `patch` 命令**；有人机器上没装 git
+- `git apply` 要求上下文严格一致，Uranus 升级一次就全废，且**报错时半个文件可能已经写进去了**
+- 这里自带一个纯 JS 的统一 diff 引擎：先全文搜上下文（不靠行号），
+  唯一命中才动手；多处命中取离补丁行号最近的；**一处对不上就整份不动**
+
+代价是补丁文件必须保持「标准统一 diff」格式（`--- a/…` / `+++ b/…`），
+所以它们照样能用 `patch -p1 < xxx.patch` 打 —— 两条路都留着。
+
+---
+
+## License
+
+分两层，别混：
+
+| 对象 | 许可 |
+|---|---|
+| 本仓库的脚本与文档（`install.mjs` / `uninstall.mjs` / `setup.mjs` / `tests/` / `patches/01-*/` 的脚本） | **MIT** —— 见 [LICENSE](LICENSE) |
+| `patches/**/*.patch` 里的代码片段 | **上游代码的衍生物**，跟着上游的**非商业**许可走 |
+| 打完补丁的 Uranus | 仍是上游作品，仍受上游许可约束 |
+
+一句话：**自己玩、自己学随便；卖钱、收费代搭建、二次修改后对外分发 —— 不行。**
+边界写清楚在 [NOTICE.md](NOTICE.md)。
+
+---
+
+## English
+
+A small collection of patches for [Uranus](https://github.com/nikonotnicotine/Uranus_Imessage)
+(a self-hosted iMessage character-simulation app). Each patch does one thing, backs up
+before touching anything, and can be rolled back byte-for-byte.
+
+| # | Patch | What it fixes |
+|---|---|---|
+| 01 | `nosleep-guard` | After your Mac wakes from sleep, Uranus keeps running but its network stack is dead (`ENOTFOUND` everywhere). A launchd job restarts it once — only when the process is older than the last real wake. macOS only, no code changes. |
+| 02 | `offline-version-history` | Re-roll / manual edit / delete all keep a copy. A `历史 N` button on each bubble lists previous versions and restores any of them (current one is archived first). Never fed back into the model context. |
+| 03 | `offline-bubble-style` | Per-side bubble colours (background, border, text, radius) with live preview, **stored server-side** so phone and desktop finally share one style. |
+| 04 | `offline-model-token` | Bubble header shows which provider/model generated that turn (fallback included) plus `↑input (cached) ↓output` tokens. Handles OpenAI / Gemini-native / Claude usage shapes. |
+| 05 | `jump-buttons` | Four translucent buttons on the right edge: top / previous own message / next own message / latest. Also fixes a Safari smooth-scroll being interrupted mid-way. |
+
+```bash
+node install.mjs --list              # what's available / installed
+node install.mjs --all --run         # install everything
+node install.mjs --only 02,03 --run  # or a subset
+node uninstall.mjs --run             # restore from backup
+```
+
+Requirements: Uranus **1.22.3** (patches 02–04 are source patches against that release),
+Node.js (already required by Uranus). Then restart Uranus and hard-refresh the console.
+
+> On **1.22.9**? Use the [`community/Uranus玩家补丁合集/`](community/Uranus玩家补丁合集/) set instead —
+> it has a dedicated 1.22.9 variant and was verified install → uninstall byte-for-byte on both 1.22.3 and 1.22.9.
+
+Patches 02 → 03 → 04 stack in that order (same React component). 01 is independent.
+No character cards, world books, memories or API keys are included — mechanism only.
+
+**No Uranus source is bundled here.** Upstream is under a custom *non-commercial* licence
+that permits re-sharing only unmodified copies, so instead of vendoring a copy,
+`setup.mjs` fetches a clean `v1.22.3` straight from the official repository:
+
+```bash
+node setup.mjs --run --install            # git clone --branch v1.22.3, then install
+node setup.mjs --run --install --no-git   # same tree via tarball (no git needed)
+node setup.mjs --run --use-existing --install   # already have it? skip the download
+```
+
+Licence: our scripts are MIT; the `.patch` files contain upstream code fragments and
+therefore follow upstream's non-commercial terms. See [NOTICE.md](NOTICE.md).
