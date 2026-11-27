@@ -1,6 +1,0 @@
-tree 01637072282a3de9ccc00a7d581523b9f2f323f5
-parent a9b4fef494a0bb4fe102e0560a15d974e3924e93
-author zyeonheenim <zyeonheenim@users.noreply.github.com> 1795794297 +0800
-committer zyeonheenim <zyeonheenim@users.noreply.github.com> 1795794297 +0800
-
-docs: 收工脚本注释去掉中转站/渠道标注，改通用说明
