@@ -3,7 +3,7 @@
 > ## 📖 先看白皮书（图文并茂，讲清每个补丁"界面变成什么样"）
 >
 > **[点击在线阅读白皮书 →](https://zyeonheenim.github.io/uranus_patches_awesome/)**（也可本地打开 [`docs/index.html`](docs/index.html)）——章节已按**推荐安装顺序**排列，并标注 Mac / Windows 适用性
-> **📦 不想看代码？直接下整包**：[`uranus-patches-v1.1.9.zip`](https://github.com/zyeonheenim/uranus_patches_awesome/releases/latest)（五个模块 + 白皮书，解压双击安装）
+> **📦 不想看代码？直接下整包**：[`uranus-patches-v1.2.0.zip`](https://github.com/zyeonheenim/uranus_patches_awesome/releases/latest)（五个模块 + 白皮书，解压双击安装）
 > 五个模块各配"装前/装后"SVG 示意图 + 怎么用 + 原理，另有 Windows 安装与兼容矩阵，基于原版 **1.22.3 与 1.22.9** 实测，零隐私。
 
 > ## 🆕 新增：玩家补丁合集（日志抽屉 / 唤醒自愈 / 入站看门狗 / 群像舞台 / 线下剧情增强）
@@ -187,8 +187,10 @@ patches/01-nosleep-guard/install.command
 Uranus 原版的气泡样式只能改主题，改不了「我这侧浅灰、他那侧米白、圆角 18、边框淡一点」。
 
 装上之后：线下页顶部多一个 **样式** 按钮 —— 上方实时预览，`跟随主题 / 自定义` 二选一，
-自定义里 **用户侧 / 助手侧分别** 调底色、底色不透明度、边框色、边框不透明度、边框宽度、文字色、圆角。
+自定义里 **角色那边 / 我这边分别** 调底色、底色不透明度、**毛玻璃（开关 + 百分比强度）**、边框色、边框不透明度、边框宽度、文字色、圆角。
 改完即时生效，没有「保存」按钮，关掉就是存好了。
+
+> ✨ **彩色毛玻璃**（v1.2.0 起）：每侧一个「关闭 / 开启」胶囊，默认关；点开启时若底色是 100% 实心会自动降到 60% 透光，磨砂当场可见。强度用直观的 `10%~100%` 调节（底层映射 5~24px 高斯模糊），透出壁纸光影的同时正文依旧清晰，Safari/iPad 与 Chromium 都支持。预览区配了黑白灰光影底图，效果一眼立现。
 
 关键点：**样式存在服务端**（`data/offline-bubbles.json`，走 `/api/offline-bubbles`），
 不是只塞在浏览器里 —— 因为 localStorage 按「设备 + 浏览器 + 源站」隔离，

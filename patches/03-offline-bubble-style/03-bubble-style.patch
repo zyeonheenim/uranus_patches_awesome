@@ -8,7 +8,7 @@
    Pencil,
    Play,
    Plus,
-@@ -70,7 +71,86 @@
+@@ -70,7 +71,102 @@
  /** 一轮正文的上限，和 server/src/offlinestore.js:MAX_TURN_CHARS 对齐。 */
  const MAX_TURN_CHARS = 20000;
  
@@ -34,6 +34,8 @@
 +const BUBBLE_SIDE_DEFAULTS = {
 +  bg: "#ffffff", // 气泡底色
 +  bgAlpha: 100, // 底色不透明度 %
++  glass: false, // 毛玻璃开关（默认关，不打扰喜欢纯色的用户）
++  blur: 60, // 磨砂强度百分比 10~100
 +  border: "#d8d8d8", // 边框色（和主题 --line 同值）
 +  borderAlpha: 100,
 +  borderWidth: 1,
@@ -75,6 +77,12 @@
 +  return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${pct}%)`;
 +}
 +
++/** 把 10~100 的直观百分比平滑映射为 5px~24px 高斯模糊半径，和插件版一致。 */
++function blurPx(percent) {
++  const p = Math.max(10, Math.min(100, Number(percent) || 60));
++  return Math.round(3 + (p / 100) * 21);
++}
++
  /**
 + * 自定义模式下那条气泡框的内联样式；theme 模式回 null —— 一个字都不盖，
 + * 换主题、换类名都不受影响，切回「跟随主题」和没做过这个功能一样。
@@ -82,20 +90,28 @@
 +function bubbleBoxStyle(style, mine) {
 +  if (!style || style.mode !== "custom") return null;
 +  const s = mine ? style.user : style.assistant;
-+  return {
++  const box = {
 +    backgroundColor: bubbleRgba(s.bg, s.bgAlpha),
 +    borderColor: bubbleRgba(s.border, s.borderAlpha),
 +    borderWidth: `${Number(s.borderWidth) || 0}px`,
 +    borderRadius: `${Number(s.radius) || 0}px`,
 +    color: s.text,
 +  };
++  if (s.glass) {
++    const filter = `blur(${blurPx(s.blur)}px) saturate(130%)`;
++    // 双内核：Safari/iPad 要 -webkit- 前缀，Chromium 用标准属性
++    box.WebkitBackdropFilter = filter;
++    box.backdropFilter = filter;
++    box.boxShadow = "0 1px 2px rgba(15, 23, 42, 0.05), 0 6px 16px rgba(15, 23, 42, 0.08)";
++  }
++  return box;
 +}
 +
 +/**
   * 一进来先画多少轮，以及每次往上看再补多少轮。
   *
   * 剧情是从上往下读的，真正在看的永远是末尾那几轮。但一条 HTML 回复就是一个
-@@ -820,6 +900,7 @@
+@@ -820,6 +916,7 @@
    altsOpen,
    onAlts,
    onRestore,
@@ -103,7 +119,7 @@
  }) {
    /*
     * 角色那侧先把没人接手的自造标记收掉（见 `offlinehtml.js:dropStray`）——
-@@ -843,6 +924,9 @@
+@@ -843,6 +940,9 @@
    const blocks = useMemo(() => (isHtml ? splitRich(text) : null), [isHtml, text]);
    // ㉑ 这条轮的历史版本（重 roll 旧稿挂在 user 轮、手改旧稿挂在被改的那条自己身上）
    const versions = turn.alts ?? [];
@@ -113,7 +129,7 @@
    const textStyle = boxStyle ? { color: boxStyle.color } : undefined;
  
    return (
-@@ -904,6 +988,7 @@
+@@ -904,6 +1004,7 @@
            </div>
          ) : (
            <div
@@ -121,7 +137,7 @@
              className={`mt-1.5 border px-3.5 py-3 ${
                /*
                 * 不带 widget 的那条按字数量宽（`w-fit`）。以前这儿是撑满整行的，
-@@ -926,6 +1011,7 @@
+@@ -926,6 +1027,7 @@
                    b.kind === "text" ? (
                      <p
                        key={i}
@@ -129,7 +145,7 @@
                        className="whitespace-pre-wrap break-words text-ui leading-relaxed text-ink-soft"
                      >
                        {spoken ? (
-@@ -954,7 +1040,7 @@
+@@ -954,7 +1056,7 @@
                  )}
                </div>
              ) : spoken ? (
@@ -138,7 +154,7 @@
                  <VoiceText
                    roleKey={roleKey}
                    turnId={turn.id}
-@@ -964,7 +1050,7 @@
+@@ -964,7 +1066,7 @@
                  />
                </p>
              ) : (
@@ -147,7 +163,7 @@
                  {text}
                </p>
              )}
-@@ -1207,6 +1293,196 @@
+@@ -1207,6 +1309,244 @@
   * 待总结 → 回归线上。所以要在按下去之前把这三件事说清楚，尤其是
   * 「注进去的只有总结，原始的每一轮不进去」。
   */
@@ -224,9 +240,17 @@
 +    >
 +      <div className="grid grid-cols-1 gap-4">
 +        {/* 实时预览：两条样例，custom 一改这里马上变 */}
-+        <div className="grid grid-cols-1 gap-2.5 rounded-item border border-line bg-sunken px-3 py-3">
-+          {preview(false, "「你来了，手怎么这么凉。」他把外套往你肩上搭，「站这儿等多久了。」")}
-+          {preview(true, "没多久。刚到。")}
++        <div
++          className="relative grid grid-cols-1 gap-2.5 overflow-hidden rounded-item border border-line px-3 py-3"
++          style={{
++            backgroundImage:
++              "linear-gradient(to right, rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,.08) 1px, transparent 1px), linear-gradient(135deg, #18181b 0%, #18181b 36%, #3f3f46 36.5%, #71717a 48%, #e4e4e7 48.5%, #f4f4f5 100%)",
++            backgroundSize: "20px 20px, 20px 20px, 100% 100%",
++          }}
++        >
++          <span className="pointer-events-none absolute right-3 top-2 font-mono text-[9px] tracking-widest text-ink-faint">PREVIEW // GLASS</span>
++          {preview(false, "「你来了，手怎么这么凉。」他把外套轻轻披在你肩上。")}
++          {preview(true, "「外面风大，走得急了点。你等很久了吗？」")}
 +        </div>
 +
 +        {/* 模式：theme = 碰都不碰，custom = 下面这些生效 */}
@@ -256,8 +280,8 @@
 +        {/* 侧切换：你的话和角色的话各配一套 */}
 +        <div className="flex items-center gap-2">
 +          {[
-+            { id: "user", label: "用户" },
-+            { id: "assistant", label: "助手" },
++            { id: "assistant", label: "角色那边" },
++            { id: "user", label: "我这边" },
 +          ].map((t) => (
 +            <button
 +              key={t.id}
@@ -293,6 +317,46 @@
 +              className="w-full accent-ink"
 +            />
 +          </StyleRow>
++          <StyleRow label="毛玻璃">
++            <div className="flex items-center gap-2">
++              {[
++                { id: false, label: "关闭" },
++                { id: true, label: "开启" },
++              ].map((t) => (
++                <button
++                  key={String(t.id)}
++                  type="button"
++                  onClick={() => {
++                    // 开毛玻璃时若底色是 100% 实心，自动降到 60% 让磨砂当场可见
++                    if (t.id && !s.glass && Number(s.bgAlpha) === 100) {
++                      onChange({ ...style, [side]: { ...s, glass: true, bgAlpha: 60 } });
++                    } else {
++                      set("glass", t.id);
++                    }
++                  }}
++                  className={`rounded-full border px-3 py-1 text-meta transition-colors duration-150 ${
++                    Boolean(s.glass) === t.id
++                      ? "border-ink-soft bg-paper text-ink"
++                      : "border-line text-ink-meta hover:text-ink"
++                  }`}
++                >
++                  {t.label}
++                </button>
++              ))}
++            </div>
++          </StyleRow>
++          {s.glass && (
++            <StyleRow label="磨砂强度" value={`${s.blur}%`}>
++              <input
++                type="range"
++                min="10"
++                max="100"
++                value={s.blur}
++                onChange={(e) => set("blur", Number(e.target.value))}
++                className="w-full accent-ink"
++              />
++            </StyleRow>
++          )}
 +          <StyleRow label="边框颜色">
 +            <ColorDot label="边框颜色" value={s.border} onChange={(v) => set("border", v)} />
 +          </StyleRow>
@@ -344,7 +408,7 @@
  function CloseDialog({ roleName, busy, inject, onInject, onClose, onConfirm }) {
    return (
      <Modal
-@@ -1477,6 +1753,56 @@
+@@ -1477,6 +1817,56 @@
    const [manual, setManual] = useState("");
    const [showSummary, setShowSummary] = useState(false);
    const [showPrompt, setShowPrompt] = useState(false);
@@ -401,7 +465,7 @@
    // 往上补了多少轮（只算「更早的那批」，不含 SHOW_TURNS 那份基数）
    const [loadedMore, setLoadedMore] = useState(0);
    // 折起来那几轮（已经换成总结的）现在展开着没有
-@@ -2259,6 +2585,9 @@
+@@ -2259,6 +2649,9 @@
                      <Button variant="ghost" onClick={() => setShowPrompt(true)}>
                        <FileText size={14} /> 提示词
                      </Button>
@@ -411,7 +475,7 @@
                    </div>
                  </div>
  
-@@ -2431,6 +2760,7 @@
+@@ -2431,6 +2824,7 @@
                          altsOpen={altsKey === t.id}
                          onAlts={setAltsKey}
                          onRestore={restoreTurn}
@@ -419,7 +483,7 @@
                          roleKey={itemId}
                          auto={turnAuto && lastAssistant?.id === t.id}
                          onVoiceError={voiceError}
-@@ -2499,8 +2829,18 @@
+@@ -2499,8 +2893,18 @@
                            <span className="text-eyebrow uppercase text-ink-faint">{userName}</span>
                            <span className="text-meta text-ink-meta">发出去了</span>
                          </div>
@@ -440,7 +504,7 @@
                              {pending}
                            </p>
                          </div>
-@@ -2524,8 +2864,18 @@
+@@ -2524,8 +2928,18 @@
                            <span className="text-eyebrow uppercase text-ink-faint">{roleName}</span>
                            <span className="text-meta text-ink-meta">正在写…</span>
                          </div>
@@ -461,7 +525,7 @@
                              {streaming}
                              <span className="ml-0.5 animate-pulse text-ink-faint">▍</span>
                            </p>
-@@ -2604,6 +2954,13 @@
+@@ -2604,6 +3018,13 @@
        )}
  
        {showPrompt && <PromptDialog onClose={() => setShowPrompt(false)} />}
@@ -477,7 +541,7 @@
          <CloseDialog
 --- a/server/src/bubblestyle.js
 +++ b/server/src/bubblestyle.js
-@@ -0,0 +1,105 @@
+@@ -0,0 +1,109 @@
 +/**
 + * 线下剧情的「气泡样式」（面板里那个「样式」弹窗）。
 + *
@@ -505,6 +569,8 @@
 +const SIDE_DEFAULTS = {
 +  bg: "#ffffff",
 +  bgAlpha: 100,
++  glass: false,
++  blur: 60,
 +  border: "#d8d8d8",
 +  borderAlpha: 100,
 +  borderWidth: 1,
@@ -530,6 +596,8 @@
 +  return {
 +    bg: hex(s.bg, SIDE_DEFAULTS.bg),
 +    bgAlpha: num(s.bgAlpha, 0, 100, SIDE_DEFAULTS.bgAlpha),
++    glass: s.glass === true,
++    blur: num(s.blur, 10, 100, SIDE_DEFAULTS.blur),
 +    border: hex(s.border, SIDE_DEFAULTS.border),
 +    borderAlpha: num(s.borderAlpha, 0, 100, SIDE_DEFAULTS.borderAlpha),
 +    borderWidth: num(s.borderWidth, 0, 12, SIDE_DEFAULTS.borderWidth),
