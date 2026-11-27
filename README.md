@@ -337,6 +337,16 @@ uranus_patches_awesome/
 └── CHANGELOG.md
 ```
 
+> **为什么有些文件看着重复？**（别删）
+> `patches/0x-*` 和 `community/Uranus玩家补丁合集/05-线下剧情增强/files/patches/0x-*`
+> 下的 `*.patch`、部分 README / smoke.mjs 内容一样，是**故意的两份**：
+> - 根 `patches/` → 统一安装器 `install.mjs` / `uninstall.mjs` 读；
+> - community 那份 → 独立双击安装包 `05-线下剧情增强/files/installer.mjs` 读，且会被单独打进发布 zip 发给玩家。
+>
+> 两套安装器各自读自己那份、互不调用；删掉任意一份都会让对应的安装方式失效。
+> 改补丁时记得**三处同步**：根 `patches/`、community 的 `03-bubble-style.patch`、
+> 以及 `03-bubble-style-1229.patch`（1.22.9 变体）。
+
 ---
 
 ## 为什么不直接用 git patch
