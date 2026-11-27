@@ -15,8 +15,9 @@
  *   node uranus群像收工.mjs --story st-xxxx            # 处理该剧情覆盖的每一天
  *   node uranus群像收工.mjs --story st-aaaa,st-bbbb    # 多场戏同天合并收（11-12 补）
  *   node uranus群像收工.mjs --story st-xxxx --only-day 2026-11-10
- *   可选 --model <prov>/<id>（默认 prov-1/m-1 某中转站 deepseek-v4-flash；2026-11-16 起替换 自建渠道，
- *    原因：gemini-3.8-flash 在完整 POV 提示词下对某些角色稳定空回、5 连败，某中转站实测出稿稳定）
+ *   可选 --model <prov>/<id>（「供应商 id / 模型 id」两个字段，在你自己的配置里查）。
+ *    不传就用脚本里的默认值 —— 那是作者本机的配置，换台机器大概率对不上，
+ *    装完请改成你自己的；提示词很长时，挑一个不会空回的稳定模型更省事）
  *
  * 幂等（重复跑安全）：
  *   - 大总结：群像库 keywords 里有「大总结指纹:<剧情>-<日期>.md-<长度>」且长度够就跳过；
